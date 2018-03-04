@@ -57,24 +57,27 @@
 \end{abstract}
 
 \section{Introduction}
-Cycling is a popular and diverse activity enjoyed by millions of people all over the world. To some, cycling is a means of commuting to work while to others it is a recreational sport. Furthermore, the quality of cycling-specific infrastructure varies across the globe. In countries like Belgium and the Netherlands where cycling is a popular recreational sport, there are vast networks of bicycle-friendly secondary roads \cite{souffriau2011planning}. However, many places do not have this same level of cycling infrastructure so bike riders must share highways with other road vehicles.
+Cycling is a popular and diverse activity enjoyed by millions of people all over the world. To some, cycling is a means of commuting to work while to others it is a recreational sport.  The quality of cycling infrastructure varies across the globe. In countries like Belgium and the Netherlands where cycling is a popular recreational sport, there are vast networks of bicycle-friendly secondary roads \cite{souffriau2011planning}. However, many places do not have this same level of cycling infrastructure so bike riders must share highways with other road vehicles.
 
 
-When determining routes to bike, recreational cyclists often weigh many different factors such as route distance, elevation gain (i.e. hills), maximum percent gradient (i.e. road steepness), and how pleasant a road is to travel by bike. Designing a route that fits all user-specified criteria is often a very difficult or impossible task.  Moreover, there are no set criteria which determine a ``preferable" cycling route. The desirability of a given cycling route is very much based on the rider's personal preferences, goals, and fitness. This research explores different algorithms to generate cycling routes for recreational road cyclists.
+When determining routes to bike, recreational cyclists consider different factors such as route distance, elevation gain (i.e. hills), maximum percent gradient (i.e. road steepness), and how pleasant a road is to travel by bike. Designing a route that fits all user-specified criteria is a difficult task.  Moreover, there are no set criteria which determine a ``preferable" cycling route. The desirability of a given route is based on the rider's personal preferences, goals, and fitness. This research explores different algorithms to generate cycling routes for recreational road cyclists.
 
 
-Most bike rides begin and end in the same location. Using this assumption, this research focuses specifically on generating preferable \emph{circular} cycling routes. For example, a recreational cyclist may want a 15-mile route with minimal traffic which starts and ends at their home.
+Most bike rides begin and end in the same location. Using this assumption, this research focuses specifically on generating preferable \emph{circular} cycling routes. For example, a cyclist may want a 15-mile route which starts and ends at their home.
     
 
 \subsection{Motivations}
-Traditional route planning problems focus mainly on finding the shortest path in a graph (i.e. road network) optimizing for either distance or time. Currently, there exists numerous route planning tools (e.g. \href{https://www.strava.com/routes/new}{Strava.com}, \href{https://www.mapmyride.com}{mapmyride.com}, and \href{https://ridewithgps.com}{ridewithgps.com}) which allow users to add points on a map and generate a route between such destinations.
+Traditional route planning problems focus mainly on finding the shortest path in a graph optimizing for either distance or time. Currently, there exists numerous route planning tools (e.g. \href{https://www.strava.com/routes/new}{Strava.com}, \href{https://www.mapmyride.com}{mapmyride.com}, and \href{https://ridewithgps.com}{ridewithgps.com}) which allow users to add points on a map and generate a route between such destinations.
 
-However, route planning for recreational cyclists poses a fundamentally different problem than traditional route planning problems because the shortest route is not necessarily the 	preferable cycling route. Recreational cyclists generally prefer longer, more scenic, and less trafficked routes as the goal of the activity is recreation not transportation. Since recreational cyclists include many factors when determining a ride, a cycling route planning problem should optimize for more than just distance or time.   
+However, route planning for recreational cyclists poses a fundamentally different problem than traditional route planning problems because the shortest route is not necessarily the 	preferable cycling route. Recreational cyclists generally prefer longer, more scenic, and less trafficked routes as the goal of the activity is recreation not transportation. 
+
+\td{Add info about traveling cyclists}
+
 
 \subsection{Related work} \label{relatedwork}
-In previous literature, the problem of planning preferable cycling routes is modeled as an instance of the Arc Orienteering Problem (AOP), a variant of the Orienteering Problem (OP) \cite{souffriau2011planning}. First introduced in 1987 by \citeauthor{golden1987orienteering}, the classical OP is a combination of node selection and determining shortest paths between nodes in a graph \cite{golden1987orienteering}. In other words, the OP is a hybrid between two classical combinatorial problems, the Knapsack Problem and the Traveling Salesman Problem (The OP may sometimes be referred to as the \emph{Selective} Traveling Salesman Problem \cite{laporte1990selective}). In the classical OP, each node in the graph is assigned a non-negative score and a non-negative cost. Given a starting node, a destination node, and some maximum cost budget, the objective of the problem is to determine a path which starts at the starting node, visits some subset of the graph nodes, and ends at the destination node \cite{gunawan2016orienteering}. In addition, the path must both maximize the total collected score (accrued from visiting a node) and keep the total collected cost under the specified budget.
+In the literature, planning preferable cycling routes is modeled as an instance of the Arc Orienteering Problem (AOP), a variant of the Orienteering Problem (OP) \cite{souffriau2011planning}. First introduced in 1987 by \citeauthor{golden1987orienteering}, the classical OP is a combination of node selection and determining shortest paths between nodes in a graph \cite{golden1987orienteering}. Therefore, the OP is a hybrid between two classical combinatorial problems, the Knapsack Problem and the Traveling Salesman Problem (The OP may sometimes be referred to as the \emph{Selective} Traveling Salesman Problem \cite{laporte1990selective}). In the classical OP, each node in the graph is assigned a non-negative score and a non-negative cost. Given a starting node, a destination node, and some maximum cost budget, the objective is to determine a path which starts at the starting node, visits some subset of the graph nodes, and ends at the destination node \cite{gunawan2016orienteering}. In addition, the solution path must both maximize the total collected score (accrued from visiting a node) and keep the total collected cost under the specified budget.
 
-The AOP is the arc variant of the OP. In the AOP, each arc (i.e. graph edge) is given a score and a cost. The goal of the AOP is produce a path which maximizes the collected score by \emph{visiting arcs} while keeping the cost within the given budget. The fundamental difference between these two problems is that one visits nodes of the graph (OP) while the other visit edges (AOP). In other words, one problem associates profit with the nodes and the other associates profit with arcs. For example, Figure \ref{fig:aop-example} shows an undirected AOP instance where $S$ is the start node, $D$ is the destination node, the budget is 10, and every edge is labeled (score, cost). The shortest path is $S \rightarrow (10,3) \rightarrow (5,5) \rightarrow D$ which has a cost of 8 and a score of 15. However, for the specified budget, $S \rightarrow (20,1) \rightarrow (3,2) \rightarrow (2,2) \rightarrow (5,5) \rightarrow D$ is the optimal solution with a score of 30 and a cost of 10. Note that the optimal solution is clearly not the shortest path but rather the path with the maximal score constrained by the cost budget.
+The AOP is the arc variant of the OP where each arc (i.e. graph edge) is given a score and a cost. In the AOP, scores and costs are accrued from visiting an arc instead of a node. For example, Figure \ref{fig:aop-example} shows an undirected AOP instance where $S$ is the start node, $D$ is the destination node, the budget is 10, and every edge is labeled (score, cost). The shortest path is $S \rightarrow (10,3) \rightarrow (5,5) \rightarrow D$ which has a cost of 8 and a score of 15. However, for the specified budget, $S \rightarrow (20,1) \rightarrow (3,2) \rightarrow (2,2) \rightarrow (5,5) \rightarrow D$ is the optimal solution with a score of 30 and a cost of 10. Note that the optimal solution is clearly not the shortest path but rather the path with the maximal score constrained by the cost budget.
 
 Previous research has shown that both the OP and the AOP are NP-Hard problems for directed and undirected graphs. Therefore, no algorithms are known to exist to \emph{optimally} solve the AOP or OP in polynomial time. While there is considerable research into the OP and its variants, there is less research into the AOP. \citeauthor{gunawan2016orienteering} provide an exhaustive survey of the OP and its variants, but the AOP is clearly over shadowed by other OP variants in the literature \cite{gunawan2016orienteering}.
 
@@ -261,11 +264,13 @@ Using this DFS algorithm as the local search heuristic \citeauthor{verbeeck2014e
     \KwRet{route}        
 \end{algorithm}
 
+\td{Move this to evaluation?}
 The main drawback of the VVA algorithm is that the ILS has slow iteration because it is performing DFS on every iteration.  Moreover, it requires many shortest paths to be precomputed before the algorithm can run. This can be infeasible on large real-world  mapping datasets. Since the algorithm assumes all pairs shortest-path pre-computated, the feasibility checking used by the search is $O(degree^{maxDepth})$ where $degree$ is the average degree of nodes in the road network and $maxDepth$ is the maximum depth allowed in the DFS.
 
 \subsection{LS Algorithm}
 \td{Edit me! Make sure to replace references to algo as "LS". Also remove QR/IP definitions?}
-At a high level, the series of algorithms proposed by \citeauthor{lu2015arc} utilize ILS but aim to restrict the search space by using spatial indices to prune arcs from the search. Instead of relying on pre-computed shortest paths, the Lu-Shahabi algorithms use online shortest path computations but do less feasibility checking due to the spatial restrictions (See Section \ref{sec:pruning} for more information). In addition, \citeauthor{lu2015arc} propose two new heuristics which are used to determine how to add and remove arcs from the solution such that the overall score improves.
+The ILS algorithm proposed by \citeauthor{lu2015arc} restricts the search space by using spatial indices to prune arcs from the search. Instead of relying on pre-computed shortest paths, the LS algorithm uses online shortest path computations but does less feasibility checking due to the spatial restrictions (See Section \ref{sec:pruning} for more information). 
+
 \subsubsection{Problem Statement}
 Unlike \citeauthor{verbeeck2014extension}, \citeauthor{lu2015arc} define their solution route in terms of ``attractive arcs" which are arcs with a positive score (i.e. $arc.score > 0$). A path from node $v_1$ to $v_2$ is a series of attractive arcs $(a_1, a_2, \ldots, a_n)$ which starts with $a_1$, ends with $a_n$ and is denoted by, $(v_1 \spa a_1 \spa a_2 \spa \ldots \spa a_n \spa v_2)$. The symbol $\spa$ denotes the shortest path in the graph between two nodes or arcs. The path between two adjacent attractive arcs ($a_i \spa  a_{i+1}$) is known as the ``blank path segment" and is the shortest path from the end vertex of $a_i$ to the start vertex of $a_{i+1}$. These vertices are respectively denoted $l_i.start$ and $l_i.end$. Given an attractive arc $a_i$ from a solution path, $a_i.pre$ refers to the previous attractive arc ($a_{i-1}$) and $a_i.post$ refers to the next attractive arc in the path ($a_{i+1}$). The total cost of a path is the sum of all costs of all the arcs in the path, including the arcs in the blank path segments. The score of a path is defined similarly.
 
@@ -376,6 +381,7 @@ Algorithm \ref{alg:ils-lu-updatecas}'s job is to update the CAS for a particular
 
 
 \subsubsection{ILS Implementation}
+\td{Rename this subsection}
 Algorithm \ref{alg:ils-lu-genpath} is the local search heuristic used by the ILS (Algorithm \ref{alg:ils-lu}). Its goal is to produce a path which connects the start vertex $s$ with the destination vertex $d$ whose total cost is within the budget $dist$ and total score is greater than $minProfit$. The algorithm builds the path by choosing candidate arcs from the CAS $A$.
 
 Algorithm \ref{alg:ils-lu-genpath} first instantiates a fake arc starting and ending at the specified endpoints with a cost and score of 0 (Line \ref{alg:ils-lu-genpath-fake}). This fake arc is used to instantiate the solution to return, $route$ (Line \ref{alg:ils-lu-genpath-init}). It then obtains a set of arcs to insert by filtering the CAS $A$ by choosing arcs whose quality ratio is higher than the average (Line \ref{alg:ils-lu-genpath-arcs}). While there are still possible arcs left to insert and the path has budget left, arcs are continuously removed from the CAS and inserted into the current solution $route$ (Lines \ref{alg:ils-lu-genpath-while}-\ref{alg:ils-lu-genpath-endwhile}). The algorithm inserts these candidate arcs into the path using a greedy approach. It chooses the closest blank path segment in the solution to insert the arc into the path (Lines \ref{alg:ils-lu-genpath-blank}-\ref{alg:ils-lu-genpath-blankend}).
@@ -473,20 +479,21 @@ An ellipse is a curve such that for every point on the curve, the sum of the dis
 
 \begin{figure}[!h]
 \begin{center}
-        \begin{tikzpicture}[x=1cm, y=0.75cm]
+\begin{tikzpicture}[auto, x=1.5cm, y=0.75cm]
   \begin{scope}[every node/.style={circle,thick,draw}]
 \node[label=left:$v_1$](1) at (0,0) {};
 \node[label=right:$v_2$](2) at (3,0) {};
-\node(3) at (1.5, 3) {};
+\node(4) at (1, 2.5) {};
+\node(5) at (2, 3) {};
 \end{scope}
 
-\draw[dashed, line width=0.5mm] (1) -- (3);
-\draw[dashed, line width=0.5mm] (2) -- (3);
-\draw[line width=1mm] (1) .. controls (0.5, 4) and (1, 1) .. (3);
-\draw [line width=1mm] (3) .. controls (1.75, 4) and (2.5, 3.5) .. (2);
+\draw[dashed, line width=0.5mm] (1) -- (4);
+\draw[dashed, line width=0.5mm] (2) -- (5);
+\draw[->, line width=1mm] (4) -- node{$a$}(5);
 
-\draw[line width=0.5mm] (1.5, 0) ellipse (4 cm and 1.25cm) node [below=10pt] {$Elip(v_1, v_2, b)$};
+\draw[line width=0.5mm] (1.5, 0) ellipse (4.5 cm and 1.5cm) node [below=15pt] {$Ellipse(v_1, v_2, Budget)$};
 \end{tikzpicture}
+\caption{Ellipse pruning technique}
 \end{center}
 \caption{Illustration of \citeauthor{lu2015arc}'s ellipse pruning technique. The goal is to connect $v_1$ to $v_2$ with a path of budget $b$. The bold path is excluded from the search since it contains a point outside of the ellipse \cite{lu2015arc}.}
 \label{fig:ellipse}
@@ -494,7 +501,7 @@ An ellipse is a curve such that for every point on the curve, the sum of the dis
 
 
 
-
+\section{ILS Implementation}
 
 
 \subsection{GraphHopper ILS Implementation}
@@ -503,6 +510,18 @@ In my research this term, I decided to implement an ILS algorithm and run it on 
 Because I didn't want to start from scratch, I chose GraphHopper as the starting point for my research. GraphHopper is an open source routing engine written in Java which can download and parse raw OSM data into a usable graph representation \cite{graphhopper}. On top of data parsing, GraphHopper provides a web server and webpage front-end which are useful for visualizing and running routing algorithms. Internally, GraphHopper has a number of built-in pathfinding algorithms including A* and Dijkstra which can be used for routing. These algorithm implementations provide a good template for implementing other routing algorithms with GraphHopper. Additionally, GraphHopper supports multiple ``routing profiles" which modify the weights of roads based on the particular vehicle (e.g. car, bike, walking). 
 
 Because of its simplicity, I chose to implement the VVA algorithm using the GraphHopper engine. Instead of computing all-pairs shortest paths upfront as Algorithm \ref{alg:ils-ver} presupposes, I relied on GraphHopper's built in preprocessing. When running the GraphHopper server for the first time, the engine processes the raw OSM data into a graph and builds contraction hierarchies for each of the enabled routing profiles. Similar to precomputing shortest paths, the method of contraction hierarchies is a preprocessing technique used to speed up shortest-path computations. It works by precomputing ``contracted" versions of the graph that contain shortcuts which means faster traversal later \cite{geisberger2008contraction}. While calculating shortest paths with contraction hierarchies is not as fast as having all paths precomputed, it requires a lot less computation up front. For ease of implementation, I chose to leverage GraphHopper's built in contraction hierarchies to do my arc feasibility checking so I didn not have to write my own preprocessing code. However, using contraction hierarchies does increase implementation complexity a little bit. When running a ``normal" graph traversal algorithm, it is important to ignore the contracted shortcut edges.
+
+
+\section{Evaluation}
+
+\subsection{Experimental Results}
+
+\subsubsection{Unit Scoring}
+\subsubsection{Scaled Scoring}
+
+\subsection{Integer Programming}
+
+\section{Conclusions}
 
 \FloatBarrier
 \bibliographystyle{plainnat}
