@@ -268,21 +268,13 @@ Using this DFS algorithm as the local search heuristic \citeauthor{verbeeck2014e
 The main drawback of the VVA algorithm is that the ILS has slow iteration because it is performing DFS on every iteration.  Moreover, it requires many shortest paths to be precomputed before the algorithm can run. This can be infeasible on large real-world  mapping datasets. Since the algorithm assumes all pairs shortest-path pre-computated, the feasibility checking used by the search is $O(degree^{maxDepth})$ where $degree$ is the average degree of nodes in the road network and $maxDepth$ is the maximum depth allowed in the DFS.
 
 \subsection{LS Algorithm}
-\td{Edit me! Make sure to replace references to algo as "LS". Also remove QR/IP definitions?}
-The ILS algorithm proposed by \citeauthor{lu2015arc} restricts the search space by using spatial indices to prune arcs from the search. Instead of relying on pre-computed shortest paths, the LS algorithm uses online shortest path computations but does less feasibility checking due to the spatial restrictions (See Section \ref{sec:pruning} for more information). 
+At a high level, the ILS algorithm proposed by \citeauthor{lu2015arc} restricts the search space by using spatial indices to prune arcs from the search. Instead of relying on pre-computed shortest paths, the LS algorithm uses online shortest path computations but does less feasibility checking due to the spatial restrictions (See Section \ref{sec:pruning} for more information).
 
-\subsubsection{Problem Statement}
-Unlike \citeauthor{verbeeck2014extension}, \citeauthor{lu2015arc} define their solution route in terms of ``attractive arcs" which are arcs with a positive score (i.e. $arc.score > 0$). A path from node $v_1$ to $v_2$ is a series of attractive arcs $(a_1, a_2, \ldots, a_n)$ which starts with $a_1$, ends with $a_n$ and is denoted by, $(v_1 \spa a_1 \spa a_2 \spa \ldots \spa a_n \spa v_2)$. The symbol $\spa$ denotes the shortest path in the graph between two nodes or arcs. The path between two adjacent attractive arcs ($a_i \spa  a_{i+1}$) is known as the ``blank path segment" and is the shortest path from the end vertex of $a_i$ to the start vertex of $a_{i+1}$. These vertices are respectively denoted $l_i.start$ and $l_i.end$. Given an attractive arc $a_i$ from a solution path, $a_i.pre$ refers to the previous attractive arc ($a_{i-1}$) and $a_i.post$ refers to the next attractive arc in the path ($a_{i+1}$). The total cost of a path is the sum of all costs of all the arcs in the path, including the arcs in the blank path segments. The score of a path is defined similarly.
+\subsubsection{Attractive Arcs}
+\citeauthor{lu2015arc} define their solution route in terms of ``attractive arcs" which are arcs with a positive score (i.e. $arc.score > 0$). A path from node $v_1$ to $v_2$ is a series of attractive arcs $(a_1, a_2, \ldots, a_n)$ which starts with $a_1$, ends with $a_n$ and is denoted by, $(v_1 \spa a_1 \spa a_2 \spa \ldots \spa a_n \spa v_2)$. The symbol $\spa$ denotes the shortest path in the graph between two nodes or arcs. The path between two adjacent attractive arcs ($a_i \spa  a_{i+1}$) is known as the ``blank path segment" and is the shortest path from the end vertex of $a_i$ to the start vertex of $a_{i+1}$. These vertices are respectively denoted $l_i.start$ and $l_i.end$. Given an attractive arc $a_i$ from a solution path, $a_i.pre$ refers to the previous attractive arc ($a_{i-1}$) and $a_i.post$ refers to the next attractive arc in the path ($a_{i+1}$). The total cost of a path is the sum of all costs of all the arcs in the path, including the arcs in the blank path segments. The score of a path is defined similarly. To build a solution, the LS algorithm connects many attractive arcs together using shortest path blank path segments.
 
-\subsubsection{Search Heuristics}
-
-
- Since these algorithms utilize the ILS framework (like \citeauthor{verbeeck2014extension}), the main issues are as follows:
-\begin{enumerate}
-    \item How should arcs be removed from the solution so that solution's score improves?
-    \item How should arcs be selected to update the solution so that the solution's score improves?
-\end{enumerate}
-In order to address these questions, \citeauthor{lu2015arc} apply two criteria onto a set of arcs. That is, every arc $a$ in the solution $S$ is associated with a set of candidate arcs. 
+\subsubsection{Candidate Arc Set}
+Every arc $a$ in the solution $S$ is associated with a set of candidate attractive arcs. 
 %
 % Definition of Candidate Arc Set
 %
@@ -290,42 +282,14 @@ In order to address these questions, \citeauthor{lu2015arc} apply two criteria o
     Let $a \in S$ be an arc in the solution $S$ whose distance budget is $B$. Then the Candidate Arc Set (CAS) of $a$, denoted by $a.CAS$ is the set of arcs who have a positive score and can feasibly update (replace) $a$ in $S$, i.e. $\forall a_c \in a.CAS, a_c.score > 0$ and $(a.pre \spa a_c \spa a.post).cost < B - S.cost + (a.pre \spa a \spa a.post)$.
 \end{definition}
 
-\citeauthor{lu2015arc} show that candidate arc sets have the following inherited property. This allows the search space to be reduced when computing some candidate arc sets since the parent sets can be restricted.
+\citeauthor{lu2015arc} show that candidate arc sets have the following inherited property. This allows the search space to be reduced when computing some CASs since the parent CAS can be restricted.
 \begin{lemma}[\cite{lu2015arc}] Let $a$ be an arc. Given $a.CAS$, $\forall a_c \in a.CAS, a_c.CAS \sse a.CAS$.
 \end{lemma}
 
-In order to determine which arcs to choose to improve the solution, they propose a criteria called ``QualityRatio" (Algorithm \ref{alg:ils-lu-qr}) which is defined for an arc $a_c$ from the candidate arc set $a.CAS$ of a solution arc $a$. The intuition is that arcs with higher value and lower cost will be more likely to improve the solution. This criteria will be used to pick arcs to add to the solution.
+To chose which candidate arcs to add to the solution, \citeauthor{lu2015arc} propose a criteria called ``Quality Ratio" which is defined for an arc $a_c$ from the candidate arc set $a.CAS$ of a solution arc $a$. The intuition is that arcs with higher value and lower cost will be more likely to improve the solution. In order to determine which arcs to remove from the solution in the ILS perturbation, they propose a criteria called ``Improve Potential". The intuition is that solution arcs with lower scores and more valuable nearby arcs are more likely to improve the solution.
 
-%
-% Quality Ratio algorithm
-%
-\begin{algorithm}[!h]
-    \caption{QualityRatio($a.pre$, $a.post$, $a_c$) \label{alg:ils-lu-qr}}
-    \KwData{$a_c$: arc from candidate arc set, $a.pre$: previous arc in solution, $a.post$: next arc in solution.}
-    \KwResult{a number.}
-    $score \gets (a.pre \spa a_c \spa a.post).score$\;
-    $cost \gets (a.pre \spa a_c \spa a.post).cost$\;
-    \KwRet{$score / cost$}        
-\end{algorithm}
+Algorithm \ref{alg:ils-lu-compcas} performs the feasibility checking to generate a set of candidate arcs which can be used to connect the start node $v_1$ to the destination node $v_2$. The algorithm takes in a set of possible arcs, iterates over each one, and adds the arc to the current CAS only if its score is positive and the distance of the path from $v_1$ to $a$ to $v_2$ is within the specified budget (Lines \ref{alg:ils-lu-compcas-for}-\ref{alg:ils-lu-compcas-add}). In addition, the Quality Ratio is calculated for the specified arc in the CAS (Line \ref{alg:ils-lu-compcas-qr}). If the CAS, $A$, passed into the algorithm is non-empty, then it can use the ``CAS inherit" property and filter out arcs whose paths are within the new specified budget. If the CAS passed in is non-empty, then the algorithm will iterate over all arcs in the graph to find the ones which can be feasibly inserted (Lines \ref{alg:ils-lu-compcas-if}-\ref{alg:ils-lu-compcas-ifend}).
 
-In order to determine which arcs to remove from the solution, they propose a criteria called ``ImprovePotential" (Algorithm \ref{alg:ils-lu-ip}). The intuition is that solution arcs with lower scores and more valuable nearby arcs are more likely to improve the solution. This criteria will be used to pick arcs from the solution to be removed.
-
-%
-% Improve Potential algorithm
-%
-\begin{algorithm}[!h]
-    \caption{ImprovePotential($a$) \label{alg:ils-lu-ip}}
-    \KwData{$a$: a solution arc}
-    \KwResult{a number.}
-    $score \gets 0$\;
-    $maxDist \gets 0$\;
-    $dist \gets (a.pre \spa a \spa a.post).cost$\;
-    \For{$e \in a.CAS$}{
-        $score \gets score + (e.score - a.score)$\;
-        $maxDist \gets max(maxDist, (a.pre \spa e \spa a.post).cost)$\;
-    }
-    \KwRet{$score / (maxDist - dist)$}       
-\end{algorithm}
 
 %
 % Compute Candidate Arc Set algorithm
@@ -346,11 +310,6 @@ In order to determine which arcs to remove from the solution, they propose a cri
     }
     \KwRet{CAS}
 \end{algorithm}
-
-
-\subsubsection{Generating Candidate Arc Sets}
-
-Algorithm \ref{alg:ils-lu-compcas} performs the feasibility checking to generate a set of candidate arcs which can be used to connect the start node $v_1$ to the destination node $v_2$. The algorithm takes in a set of possible arcs, iterates over each one, and adds the arc to the current CAS only if its score is positive and the distance of the path from $v_1$ to $a$ to $v_2$ is within the specified budget (Lines \ref{alg:ils-lu-compcas-for}-\ref{alg:ils-lu-compcas-add}). In addition, the quality ratio (Algorithm \ref{alg:ils-lu-qr}) is calculated for the specified arc in the CAS (Line \ref{alg:ils-lu-compcas-qr}). If the CAS, $A$, passed into the algorithm is non-empty, then it can use the ``CAS inherit" property and filter out arcs whose paths are within the new specified budget. If the CAS passed in is non-empty, then the algorithm will iterate over all arcs in the graph to find the ones which can be feasibly inserted (Lines \ref{alg:ils-lu-compcas-if}-\ref{alg:ils-lu-compcas-ifend}).
 
 
 %
@@ -380,9 +339,8 @@ Algorithm \ref{alg:ils-lu-compcas} performs the feasibility checking to generate
 Algorithm \ref{alg:ils-lu-updatecas}'s job is to update the CAS for a particular arc $a$. If arcs are added to the current solution, then its distance changes as well as the remaining budget. For the new arcs added, computing the respective CASs using Algorithm \ref{alg:ils-lu-compcas} suffices. However, the previous arcs in the solution need to have their CASs changed since the remaining distance (budget) is now different. Algorithm \ref{alg:ils-lu-updatecas} takes in two budget values, $newDist$ and $oldDist$. If the new budget is smaller than the old budget, there may be some arcs in our CAS whose paths are too long for the new budget. Therefore, the algorithm employs CAS inheritance and restricts the current CAS by removing the arcs which can no longer be feasibly inserted with the new budget (Lines \ref{alg:ils-lu-updatecas-less}-\ref{alg:ils-lu-updatecas-lessend}). If the new budget is larger than our old budget, then the algorithm must expand the CAS by checking the feasibility of all arcs in the graph (Lines \ref{alg:ils-lu-updatecas-more}-\ref{alg:ils-lu-updatecas-moreend}).
 
 
-\subsubsection{ILS Implementation}
-\td{Rename this subsection}
-Algorithm \ref{alg:ils-lu-genpath} is the local search heuristic used by the ILS (Algorithm \ref{alg:ils-lu}). Its goal is to produce a path which connects the start vertex $s$ with the destination vertex $d$ whose total cost is within the budget $dist$ and total score is greater than $minProfit$. The algorithm builds the path by choosing candidate arcs from the CAS $A$.
+\subsubsection{Path Generation}
+Algorithm \ref{alg:ils-lu-genpath} is the local search heuristic used by the LS algorithm (Algorithm \ref{alg:ils-lu}). Its goal is to produce a path which connects the start vertex $s$ with the destination vertex $d$ whose total cost is within the budget $dist$ and total score is greater than $minProfit$. The algorithm builds the path by choosing candidate arcs from the CAS $A$.
 
 Algorithm \ref{alg:ils-lu-genpath} first instantiates a fake arc starting and ending at the specified endpoints with a cost and score of 0 (Line \ref{alg:ils-lu-genpath-fake}). This fake arc is used to instantiate the solution to return, $route$ (Line \ref{alg:ils-lu-genpath-init}). It then obtains a set of arcs to insert by filtering the CAS $A$ by choosing arcs whose quality ratio is higher than the average (Line \ref{alg:ils-lu-genpath-arcs}). While there are still possible arcs left to insert and the path has budget left, arcs are continuously removed from the CAS and inserted into the current solution $route$ (Lines \ref{alg:ils-lu-genpath-while}-\ref{alg:ils-lu-genpath-endwhile}). The algorithm inserts these candidate arcs into the path using a greedy approach. It chooses the closest blank path segment in the solution to insert the arc into the path (Lines \ref{alg:ils-lu-genpath-blank}-\ref{alg:ils-lu-genpath-blankend}).
 
@@ -436,7 +394,7 @@ While the time limit $t$ has not elapsed, the algorithm chooses arcs from the so
 % Lu-Shahabi ILS algorithm
 %
 \begin{algorithm}[!h]
-    \caption{ILS-Lu-Shahabi($t$, $s$, $d$, $dist$, $G$) \label{alg:ils-lu}}
+    \caption{ILS-LS($t$, $s$, $d$, $dist$, $G$) \label{alg:ils-lu}}
     \KwData{$t$: a time, $s$: the start node of the path, $d$: the end node of the path, $dist$: the maximum cost of the route, $G$: the graph of the road network.}
     \KwResult{a path}
     
@@ -472,7 +430,7 @@ While the time limit $t$ has not elapsed, the algorithm chooses arcs from the so
 \end{algorithm}
 
 \subsubsection{Spatial Pruning Techniques}\label{sec:pruning}
-While Algorithm \ref{alg:ils-lu} relies on the ``CAS inherit" property to restrict the search space, it still has to do a lot of processing to generate the initial CAS or update CASs when the budget expands. For example, line \ref{alg:ils-lu-fakecas} computes the CAS of the inital fake arc which requires checking the feasibility of every arc in the road network. Clearly, this is a large search space. In order to address this issue,  \citeauthor{lu2015arc} propose an ``ellipse pruning" technique to reduce the number of arcs which need to be checked.
+While Algorithm \ref{alg:ils-lu} relies on the ``CAS inherit" property to restrict the search space, it still has to do a lot of processing to generate the initial CAS or update CASs when the budget expands. For example, Line \ref{alg:ils-lu-fakecas} computes the CAS of the inital fake arc which requires checking the feasibility of every arc in the road network. Clearly, this is a large search space. In order to address this issue,  \citeauthor{lu2015arc} propose an ``ellipse pruning" technique to reduce the number of arcs which need to be checked.
 
 
 An ellipse is a curve such that for every point on the curve, the sum of the distances to the two focal points is constant. Consider the scenario where there are two graph nodes $v_1$ and $v_2$ in which the desired path between the two has a budget of $b$. Furthermore, consider the ellipse whose focal points are the two nodes and whose sum of the distances to the two focal points is $b$ (Figure \ref{fig:ellipse}). For all points $p$ on the ellipse $(v_1 \spa p \spa v_2).cost = b$ where the shortest path is the straight line Euclidean distance. Therefore, if there is an arc $a$ which connects $v_1$ to $v_2$ and contains a point $p_o$ outside of the ellipse, we know that $a.cost > b$ since $(v_1 \spa p_o \spa v_2).cost > b$. This criteria is used to prune arcs from the search space when calculating or updating CASs.
@@ -495,7 +453,7 @@ An ellipse is a curve such that for every point on the curve, the sum of the dis
 \end{tikzpicture}
 \caption{Ellipse pruning technique}
 \end{center}
-\caption{Illustration of \citeauthor{lu2015arc}'s ellipse pruning technique. The goal is to connect $v_1$ to $v_2$ with a path of budget $b$. The bold path is excluded from the search since it contains a point outside of the ellipse \cite{lu2015arc}.}
+\caption{Illustration of \citeauthor{lu2015arc}'s ellipse pruning technique. The goal is to connect $v_1$ to $v_2$ with a path of budget $b$. The arc $a$ is excluded from the search since it contains a point outside of the ellipse and is infeasible. \cite{lu2015arc}.}
 \label{fig:ellipse}
 \end{figure}
 
@@ -503,8 +461,12 @@ An ellipse is a curve such that for every point on the curve, the sum of the dis
 
 \section{ILS Implementation}
 
+\subsection{OpenStreetMap}
 
-\subsection{GraphHopper ILS Implementation}
+
+\subsection{GraphHopper}
+
+\subsection{Implementation Choices}
 In my research this term, I decided to implement an ILS algorithm and run it on a real road network using readily available mapping data. The crowd-sourced open mapping dataset \emph{OpenStreetMap} (OSM) was the natural choice for the data. As an organization, OSM  provides a free mapping dataset for the entire planet (a full world map is around 56GB!) \cite{osm}. However, the OSM map format is an XML-based schema which is not trivially translatable into a road network graph. Luckily, in addition to open data, OSM includes a collection of open source software that can interface with the data. Because the goal of this research is not to translate raw OSM data into a usable graph representation, I needed software that already had this parsing capability in order to implement an ILS algorithm.
 
 Because I didn't want to start from scratch, I chose GraphHopper as the starting point for my research. GraphHopper is an open source routing engine written in Java which can download and parse raw OSM data into a usable graph representation \cite{graphhopper}. On top of data parsing, GraphHopper provides a web server and webpage front-end which are useful for visualizing and running routing algorithms. Internally, GraphHopper has a number of built-in pathfinding algorithms including A* and Dijkstra which can be used for routing. These algorithm implementations provide a good template for implementing other routing algorithms with GraphHopper. Additionally, GraphHopper supports multiple ``routing profiles" which modify the weights of roads based on the particular vehicle (e.g. car, bike, walking). 
@@ -513,6 +475,8 @@ Because of its simplicity, I chose to implement the VVA algorithm using the Grap
 
 
 \section{Evaluation}
+
+\subsection{Data Collection}
 
 \subsection{Experimental Results}
 
