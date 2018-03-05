@@ -462,14 +462,28 @@ An ellipse is a curve such that for every point on the curve, the sum of the dis
 \section{ILS Implementation}
 
 \subsection{OpenStreetMap}
+Our goal is to implement the VVA and LS algorithms and evaluate them on real world road networks. The crowd-sourced open mapping dataset \emph{OpenStreetMap} (OSM) is the natural choice for the data. As an organization, OSM  provides a free mapping dataset for the entire planet (a full world map is around 56GB!) \cite{osm}. However, the OSM map format is an XML-based schema which is not trivially translatable into a road network graph. Luckily, in addition to open data, OSM includes a collection of open source software which interface with the data. Because the goal of this research is not to translate raw OSM data into a usable graph representation, we need software that already has this parsing capability in order to implement both ILS algorithms.
 
+It should be noted that since OSM is a crowdsourced dataset, its level of accuracy varies across the world. This is the main drawback to using this datasource.
 
 \subsection{GraphHopper}
+We use GraphHopper as the starting point for our research. GraphHopper is an open source routing engine written in Java which can download and parse raw OSM data into a usable graph representation \cite{graphhopper}. On top of data parsing, GraphHopper provides a web server and webpage front-end which are useful for visualizing and running routing algorithms (Figure \ref{fig:graphhopper-frontend}). Internally, GraphHopper has a number of built-in pathfinding algorithms including A* and Dijkstra which can be used for routing. These algorithm implementations provide a good template for implementing other routing algorithms with GraphHopper. 
+
+\begin{figure}[h]
+    \begin{center}
+        \includegraphics[width=\textwidth]{figs/graphhopper}
+    \end{center}
+    \caption{GraphHopper web frontend. This is OpenStreetMap data overlaid with the shortest path from Union College to Saratoga Springs.}
+    \label{fig:graphhopper-frontend}
+\end{figure}
+
+Additionally, GraphHopper supports multiple ``routing profiles" which modify the weights of roads based on the particular vehicle (e.g. car, bike, walking). This is used to prefer certain roads that are more suited for a particular vehicle. 
+
+\td{Contraction Hierarchies}
+
 
 \subsection{Implementation Choices}
-In my research this term, I decided to implement an ILS algorithm and run it on a real road network using readily available mapping data. The crowd-sourced open mapping dataset \emph{OpenStreetMap} (OSM) was the natural choice for the data. As an organization, OSM  provides a free mapping dataset for the entire planet (a full world map is around 56GB!) \cite{osm}. However, the OSM map format is an XML-based schema which is not trivially translatable into a road network graph. Luckily, in addition to open data, OSM includes a collection of open source software that can interface with the data. Because the goal of this research is not to translate raw OSM data into a usable graph representation, I needed software that already had this parsing capability in order to implement an ILS algorithm.
 
-Because I didn't want to start from scratch, I chose GraphHopper as the starting point for my research. GraphHopper is an open source routing engine written in Java which can download and parse raw OSM data into a usable graph representation \cite{graphhopper}. On top of data parsing, GraphHopper provides a web server and webpage front-end which are useful for visualizing and running routing algorithms. Internally, GraphHopper has a number of built-in pathfinding algorithms including A* and Dijkstra which can be used for routing. These algorithm implementations provide a good template for implementing other routing algorithms with GraphHopper. Additionally, GraphHopper supports multiple ``routing profiles" which modify the weights of roads based on the particular vehicle (e.g. car, bike, walking). 
 
 Because of its simplicity, I chose to implement the VVA algorithm using the GraphHopper engine. Instead of computing all-pairs shortest paths upfront as Algorithm \ref{alg:ils-ver} presupposes, I relied on GraphHopper's built in preprocessing. When running the GraphHopper server for the first time, the engine processes the raw OSM data into a graph and builds contraction hierarchies for each of the enabled routing profiles. Similar to precomputing shortest paths, the method of contraction hierarchies is a preprocessing technique used to speed up shortest-path computations. It works by precomputing ``contracted" versions of the graph that contain shortcuts which means faster traversal later \cite{geisberger2008contraction}. While calculating shortest paths with contraction hierarchies is not as fast as having all paths precomputed, it requires a lot less computation up front. For ease of implementation, I chose to leverage GraphHopper's built in contraction hierarchies to do my arc feasibility checking so I didn not have to write my own preprocessing code. However, using contraction hierarchies does increase implementation complexity a little bit. When running a ``normal" graph traversal algorithm, it is important to ignore the contracted shortcut edges.
 
