@@ -512,7 +512,7 @@ When running the GraphHopper server for the first time, the engine processes the
 \subsection{VVA Implementation}
 Our Java implementation of the VVA algorithm differs very little from the pseudocode proposed by \citeauthor{verbeeck2014extension}. Our implementation does not have a set of starting locations nor does it retain the four best initial solutions. Rather, the starting location is fixed and only the single highest scoring solution is retained between iterations. Our local search heuristic is still a recursive DFS with a maximum depth parameter and arc feasibility checking.
 
-Another difference in our implementation is how we check arc feasibility. Instead of precomputing all-pairs shortest path, we use GraphHopper's built in contraction hierarchies and do an online shortest-path computation. It should be noted that this is slower than assuming all shortest paths have been computed and using a lookup table. However, this requires far less computation before the algorithm runs. In addition, we can leverage GraphHopper's fast and correctly implemented shortest-path algorithms without writing our own pre-processing code. 
+Another difference in our implementation is how we check arc feasibility. Instead of precomputing all-pairs shortest path, we use GraphHopper's built in contraction hierarchies and do an online shortest-path computation. It should be noted that this is slower than assuming all shortest paths have been computed and using a lookup table. However, this requires far less computation before the algorithm runs. In addition, we can leverage GraphHopper's fast and correctly implemented shortest-path algorithms without writing our own pre-processing code. Since we are routing on a contraction hierarchy graph, we need to make sure to ignore the special ``shortcut" edges added in the contraction phase.
 
 Lastly, recall that our road scoring mechanism is GraphHopper's normalized priority value and road costs are distances in meters.
 
@@ -534,8 +534,13 @@ Lastly, recall that our road scoring mechanism is GraphHopper's normalized prior
 
 
 \subsubsection{LS Implementation}
+Compared to the the VVA algorithm, the LS algorithm is more complex so our implementation differs more from the pseudocode provided by \citeauthor{lu2015arc}. There are many more implementation choices to be made. Recall that this algorithm works by connecting together attractive arcs with shortest paths known as ``blank path segments." 
 
-\subsection{LS Variants}
+Implicitly defined in the LS algorithm is an object which represents the solution built up through iterations. We call this object a ``Route" and provide a unified interface for adding and removing arcs from this path. When adding and removing arcs, internally the object maintains the blank path segment invariant by calculating shortest paths and storing these paths. When it is time to return return the actual path to GraphHopper, the Route object simply iterates over stored attractive arcs and shortest paths (blank path segments) in the correct order. Since we are using a contraction hierarchy shortest path algorithm to compute the blank path segments, we recursively ``unpack" any shortcuts (to get the original roads) before returning the solution to GraphHopper. 
+
+Our Candidate Arc Set (CAS) computation also differs in the way we spatially fetch arcs. We do not use a grid index and fetch all arcs whose grids overlap with the pruning ellipse.  Instead, we perform a breath first search starting at our start node only continuing our search outward if a given road is inside of our pruning ellipse. When the search returns, we have a list of all arcs that are contained solely inside of the pruning ellipse. We compute CAS feasibility of these arcs using the same contraction hierarchy shortest path algorithm used to calculate blank path segments. Our scores and costs are identical to those used in our VVA implementation.
+
+\subsection{Our LS Variants}
 
 
 \section{Evaluation}
