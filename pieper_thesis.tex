@@ -507,9 +507,31 @@ Additionally, GraphHopper supports multiple ``routing profiles" which modify the
 \subsubsection{Contraction Hierarchies}
 GraphHopper supports a special type of graph preprocessing called contraction hierarchies \cite{graphhopper}. The goal of contraction hierarchies is to preprocess the graph such that subsequent shortest path queries can be done more quickly but still provably optimal. This is done by ordering nodes by some importance value and then iteratively contracting the least important node. Contracting a node $v$ means replacing shortest paths through $v$ with new shortcut edges \cite{geisberger2008contraction}. A faster shortest path search can be obtained by running a bidirectional shortest-path search making sure that the forward direction only traverses edges going to more important nodes and the backward direction only traverses edges coming from more important nodes.
 
-When running the GraphHopper server for the first time, the engine processes the raw OSM data into a graph and builds contraction hierarchies for each of the enabled routing profiles. We use GraphHopper's built-in contraction hierarchy based shortest path algorithm (Bidirectional Dijkstra's algorithm) for calculating shortest paths in both our VVA implementation LS implementation.
+When running the GraphHopper server for the first time, the engine processes the raw OSM data into a graph and builds contraction hierarchies for each of the enabled routing profiles. This contraction step may take many minutes depending on the size of the graph. We use GraphHopper's built-in contraction hierarchy based shortest path algorithm (Bidirectional Dijkstra's algorithm) for calculating shortest paths in both our VVA implementation LS implementation.
 
 \subsection{VVA Implementation}
+Our Java implementation of the VVA algorithm differs very little from the pseudocode proposed by \citeauthor{verbeeck2014extension}. Our implementation does not have a set of starting locations nor does it retain the four best initial solutions. Rather, the starting location is fixed and only the single highest scoring solution is retained between iterations. Our local search heuristic is still a recursive DFS with a maximum depth parameter and arc feasibility checking.
+
+Another difference in our implementation is how we check arc feasibility. Instead of precomputing all-pairs shortest path, we use GraphHopper's built in contraction hierarchies and do an online shortest-path computation. It should be noted that this is slower than assuming all shortest paths have been computed and using a lookup table. However, this requires far less computation before the algorithm runs. In addition, we can leverage GraphHopper's fast and correctly implemented shortest-path algorithms without writing our own pre-processing code. 
+
+Lastly, recall that our road scoring mechanism is GraphHopper's normalized priority value and road costs are distances in meters.
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=\textwidth]{figs/vva-route}
+    \end{center}
+    \caption{Example route produced by our implementation of the VVA algorithm.}
+    \label{fig:vva-example}
+\end{figure}
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=\textwidth]{figs/vva-route-turn}
+    \end{center}
+    \caption{Quick turns in VVA example route. Inset in Figure \ref{fig:vva-example}}
+    \label{fig:vva-example-turn}
+\end{figure}
+
 
 \subsubsection{LS Implementation}
 
