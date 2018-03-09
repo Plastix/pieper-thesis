@@ -84,9 +84,9 @@ However, route planning for recreational cyclists poses a fundamentally differen
 \subsection{Related work} \label{relatedwork}
 In the literature, planning preferable cycling routes is modeled as an instance of the Arc Orienteering Problem (AOP), a variant of the Orienteering Problem (OP) \cite{souffriau2011planning}. First introduced in 1987 by \citeauthor{golden1987orienteering}, the classical OP is a combination of node selection and determining shortest paths between nodes in a graph \cite{golden1987orienteering}. Therefore, the OP is a hybrid between two classical combinatorial problems, the Knapsack Problem and the Traveling Salesman Problem (The OP may sometimes be referred to as the \emph{Selective} Traveling Salesman Problem \cite{laporte1990selective}). In the classical OP, each node in the graph is assigned a non-negative score and a non-negative cost. Given a starting node, a destination node, and some maximum cost budget, the objective is to determine a path which starts at the starting node, visits some subset of the graph nodes, and ends at the destination node \cite{gunawan2016orienteering}. In addition, the solution path must both maximize the total collected score (accrued from visiting a node) and keep the total collected cost under the specified budget.
 
-The AOP is the arc variant of the OP where each arc (i.e. graph edge) is given a score and a cost. In the AOP, scores and costs are accrued from visiting an arc instead of a node. For example, Figure \ref{fig:aop-example} shows an undirected AOP instance where $S$ is the start node, $D$ is the destination node, the budget is 10, and every edge is labeled (score, cost). The shortest path is $S \rightarrow (10,3) \rightarrow (5,5) \rightarrow D$ which has a cost of 8 and a score of 15. However, for the specified budget, $S \rightarrow (20,1) \rightarrow (3,2) \rightarrow (2,2) \rightarrow (5,5) \rightarrow D$ is the optimal solution with a score of 30 and a cost of 10. Note that the optimal solution is clearly not the shortest path but rather the path with the maximal score constrained by the cost budget.
+The AOP is the arc variant of the OP where each arc (i.e. graph edge) is given a score and a cost. In the AOP, scores and costs are accrued from visiting an arc instead of a node. For example, Figure \ref{fig:aop-example} shows an undirected AOP instance where $S$ is the start node, $D$ is the destination node, the budget is 10, and every edge is labeled (score, cost). The shortest path is $S \rightarrow (10,3) \rightarrow (5,5) \rightarrow D$ which has a cost of 8 and a score of 15. However, for the specified budget, $S \rightarrow (20,1) \rightarrow (3,2) \rightarrow (2,2) \rightarrow (5,5) \rightarrow D$ is the optimal solution with a score of 30 and a cost of 10. The optimal solution is clearly not the shortest path but rather the path with the maximal score constrained by the cost budget.
 
-Previous research has shown that both the OP and the AOP are NP-Hard problems for directed and undirected graphs. Therefore, no algorithms are known to exist to \emph{optimally} solve the AOP or OP in polynomial time. While there is considerable research into the OP and its variants, there is less research into the AOP. \citeauthor{gunawan2016orienteering} provide an exhaustive survey of the OP and its variants, but the AOP is clearly over shadowed by other OP variants in the literature \cite{gunawan2016orienteering}.
+Previous research shows that both the OP and the AOP are NP-Hard problems for directed and undirected graphs. Therefore, no algorithms are known to exist to \emph{optimally} solve the AOP or OP in polynomial time. While there is considerable research into the OP and its variants, there is less research into the AOP. \citeauthor{gunawan2016orienteering} provide an exhaustive survey of the OP and its variants, but the AOP is clearly over shadowed by other OP variants in the literature \cite{gunawan2016orienteering}.
 
 \begin{figure}[h]
 \begin{center}
@@ -640,7 +640,7 @@ We ran 500 trials of each algorithm configuration (Table \ref{tab:algo-configs})
 
 The ILS algorithms were modified to record the current solution score and elapsed time at each iteration. These values were written to a single CSV file for each algorithm configuration. For each configuration, average scores and average times were calculated using pivot tables with Python and Pandas\footnote{A data manipulation and analysis Python package.}.
 
-Trials were conduct on a \td{Look up machine specs...}
+Trials were conducted on a \td{Look up machine specs...}
 \begin{table}
 \begin{center}
 \begin{tabular}{|l|l|}
@@ -668,6 +668,41 @@ LS + (No Backtracking) & N/A \\
 \subsection{Experimental Results}
 
 \subsubsection{Unit Scoring}
+\label{sec:unit-scoring}
+Our first experiment uses unit scoring. Thus, if two roads of different length have the same priority value by GraphHopper then they have the same score (its priority value directly). 
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|l|l|l|l|}
+    \hline
+    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} & \textbf{Score/Time Ratio} \\
+    \hline
+    VVA & 20.57 & 20.37 & 1.00 \\
+    \hline
+    LS & 126.13 & 1.20 & 105.10 \\
+    \hline
+    LS + (Budget Allowance) & 215.87 & 23.12 & 9.33 \\
+    \hline
+    LS + (Incremental Budget) & 282.66 & 119.52 & 2.36 \\
+    \hline
+    LS + (Arc Restrictions) & 49.85 & 0.09 & 553.88 \\
+    \hline
+    LS + (No Backtracking) & 33.36 & 0.60 & 55.6 \\
+    \hline
+\end{tabular}
+\caption{Algorithm performance with unit scoring.}
+\end{center}
+\label{tab:unit-scoring-results}
+\end{table}
+
+Our results validate the performance of the baseline LS algorithm compared to the VVA algorithm. VVA has a number of substantial limitations. First, VVA has small score improvement at each iteration because it completes a number of idle iterations with no improvement (Figure \ref{fig:graphs-unit-scoring-vva}). This is because VVA simply runs DFS and checks to see if the solution after inserting an arc has improved score and is still within the cost budget. It does not consider the value or cost of the path segment being removed. Secondly, VVA has slow iteration because it has a large DFS search space. Even with a maximum depth search parameter, substantial feasibility checking is required, especially for road dense areas. At the end of 100 iterations, our VVA implementation produces a route in 20 seconds (Table \ref{tab:unit-scoring-results}). Third, VVA requires all-pairs shortest path to be precomputed which can be infeasible for large graphs. This is not an issue with our implementation since we are using contraction hierarchies which requires less pre-computation. 
+
+Our LS baseline implementation produces a route with 6 times the score of VVA in less than 1.5 seconds (Table \ref{tab:unit-scoring-results}). In addition, it performs very few idle iterations (Figure \ref{fig:graphs-unit-scoring-ls}). This shows that the spatial pruning techniques and heuristics for modifying the solution work well together to both improve overall score and reduce the time required. LS finds an initial which is better than VVA's final route and slowly improves over the subsequent iterations.
+
+The data shows that our intuition behind the LS Budget Allowance variant was correct. Saving cost budget for later iterations leads produces a variant which generates a route with 70\% score improvement when compared to the baseline algorithm. However, this variant pays a big penalty in time because the route generation time is nearly 20 times longer. The LS Incremental Budget produces an even higher score than Budget Allowance, but the time required to produce such a route is 100 times the LS baseline. Since the remaining budget is not decreasing sharply after the first iteration, these variants have to spend time computing and updating larger CASs.
+
+The two final LS variants (Arc Restrictions and No Backtracking) have the same fault. They run much faster than the baseline but this is because after the first iteration they do no work. Both variants pose strict limitations on which arcs are allowed in the CAS. After the first iteration, the initial CAS gets pruned to the empty set so no route changes can be made. Both of these variants beat VVA's score at a minuscule fraction of the required time. However, neither comes close to LS baseline's score. If we consider Score to Time ratio, then Arc Restrictions variant wins out among all the algorithms and variants.
+
 \begin{figure}[h]
 \begin{subfigure}{.45\linewidth}
 \begin{center}
@@ -710,6 +745,9 @@ LS + (No Backtracking) & N/A \\
 \end{tikzpicture}
 \end{center}
 \caption{VVA}
+% TODO PUT ME SOMEWHERE
+%\footnote{The ``wavy" time plot is a consequence of the ILS perturbation phase. Recall that if no route improvement is found, VVA increases the number of contiguous arcs that it removes. This means that on these iterations, the DFS search must find a longer path which takes more time.}
+\label{fig:graphs-unit-scoring-vva}
 \end{subfigure}
 \hfill
 \begin{subfigure}{.45\linewidth}
@@ -753,9 +791,9 @@ LS + (No Backtracking) & N/A \\
 \end{tikzpicture}
 \end{center}
 \caption{LS}
+\label{fig:graphs-unit-scoring-ls}
 \end{subfigure}
 \\[1ex]
-
 \begin{subfigure}{.45\linewidth}
 \begin{center}
 \begin{tikzpicture}
@@ -835,18 +873,127 @@ LS + (No Backtracking) & N/A \\
 \addlegendentry{Time}
 \end{axis}
 \end{tikzpicture}
-
 \end{center}
 \caption{LS + (Incremental Budget)}
 \end{subfigure}
+\\[1ex]
+\begin{subfigure}{.45\linewidth}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth,
+    xlabel={Iteration Number},
+    ylabel={Average Score},
+    axis y line*=left,
+]
+\addplot[
+    color=blue,
+    style={thick}
+    ]
+    coordinates {
+    (1, 0.0)(2, 49.93028571600001)(3, 49.94514285600001)(4, 49.93600000200001)(5, 49.92400000200001)(6, 49.91771428800001)(7, 49.912000002000006)(8, 49.912000002000006)(9, 49.89714286000001)(10, 49.892571432000004)(11, 49.89200000200001)(12, 49.869714288000004)(13, 49.87857143)(14, 49.87857143)(15, 49.87857143)(16, 49.87857143)(17, 49.87857143)(18, 49.87857143)(19, 49.87857143)(20, 49.87857143)(21, 49.87857143)(22, 49.83171428600001)(23, 49.83457143000001)(24, 49.78800000200002)(25, 49.843714286000015)(26, 49.843714286000015)(27, 49.84685714400002)(28, 49.850285716000016)(29, 49.850285716000016)(30, 49.850285716000016)(31, 49.850285716000016)(32, 49.850285716000016)(33, 49.850285716000016)(34, 49.850285716000016)(35, 49.850285716000016)(36, 49.85314285800001)(37, 49.85314285800001)(38, 49.85314285800001)(39, 49.85314285800001)(40, 49.85314285800001)(41, 49.85314285800001)(42, 49.85314285800001)(43, 49.85314285800001)(44, 49.85314285800001)(45, 49.85314285800001)(46, 49.85314285800001)(47, 49.85314285800001)(48, 49.85314285800001)(49, 49.85314285800001)(50, 49.85314285800001)(51, 49.85314285800001)(52, 49.85314285800001)(53, 49.85314285800001)(54, 49.85314285800001)(55, 49.85314285800001)(56, 49.85314285800001)(57, 49.85314285800001)(58, 49.85314285800001)(59, 49.85314285800001)(60, 49.85314285800001)(61, 49.85314285800001)(62, 49.85314285800001)(63, 49.85314285800001)(64, 49.85314285800001)(65, 49.85314285800001)(66, 49.85314285800001)(67, 49.85314285800001)(68, 49.85314285800001)(69, 49.85314285800001)(70, 49.85314285800001)(71, 49.85314285800001)(72, 49.85314285800001)(73, 49.85314285800001)(74, 49.85314285800001)(75, 49.85314285800001)(76, 49.85314285800001)(77, 49.85314285800001)(78, 49.85314285800001)(79, 49.85314285800001)(80, 49.85314285800001)(81, 49.85314285800001)(82, 49.85314285800001)(83, 49.85314285800001)(84, 49.85314285800001)(85, 49.85314285800001)(86, 49.85314285800001)(87, 49.85314285800001)(88, 49.85314285800001)(89, 49.85314285800001)(90, 49.85314285800001)(91, 49.85314285800001)(92, 49.85314285800001)(93, 49.85314285800001)(94, 49.85314285800001)(95, 49.85314285800001)(96, 49.85314285800001)(97, 49.85314285800001)(98, 49.85314285800001)(99, 49.85314285800001)(100, 49.85314285800001)    }; \label{ls-graph-normal}
+\end{axis}
+
+\begin{axis}[
+    width=\textwidth,
+    ylabel near ticks, yticklabel pos=right,
+    ylabel={Time (s)},
+    legend pos = {south east},
+    legend style={font=\scriptsize\selectfont,},
+    legend image post style={scale=0.4},
+    hide x axis,
+    axis y line*=right,
+]
+\addlegendimage{/pgfplots/refstyle=ls-graph-budget-percent, blue,style=thick}\addlegendentry{Score}
+\addplot[
+    color=red,
+    style={thick}
+    ]
+    coordinates {
+(1, 0.06131999999999988)(2, 0.061715999999999785)(3, 0.06209799999999986)(4, 0.06246599999999992)(5, 0.062836)(6, 0.06320000000000005)(7, 0.0635720000000001)(8, 0.06393000000000006)(9, 0.06433000000000004)(10, 0.06464600000000001)(11, 0.06511599999999995)(12, 0.06557400000000002)(13, 0.06595200000000004)(14, 0.06635200000000008)(15, 0.0667160000000001)(16, 0.06710400000000008)(17, 0.06749200000000007)(18, 0.06787600000000006)(19, 0.06827400000000008)(20, 0.0686620000000001)(21, 0.06906200000000014)(22, 0.06944600000000016)(23, 0.06996400000000015)(24, 0.07045000000000008)(25, 0.07085200000000011)(26, 0.07127200000000013)(27, 0.07164800000000023)(28, 0.07201600000000023)(29, 0.07240000000000016)(30, 0.07278600000000014)(31, 0.07319400000000009)(32, 0.07353600000000013)(33, 0.07393200000000018)(34, 0.07431600000000017)(35, 0.0747200000000002)(36, 0.07507000000000025)(37, 0.0754680000000002)(38, 0.07586200000000018)(39, 0.0762320000000001)(40, 0.07661400000000015)(41, 0.07700400000000017)(42, 0.07736200000000024)(43, 0.07775000000000025)(44, 0.07812400000000023)(45, 0.07850200000000024)(46, 0.0789020000000002)(47, 0.07929000000000017)(48, 0.07971800000000012)(49, 0.0800880000000001)(50, 0.08045600000000012)(51, 0.08088600000000024)(52, 0.08126800000000024)(53, 0.08166600000000022)(54, 0.0820400000000002)(55, 0.08241200000000015)(56, 0.08277800000000017)(57, 0.08319200000000013)(58, 0.08358000000000014)(59, 0.08396200000000016)(60, 0.08435200000000012)(61, 0.08474600000000014)(62, 0.08514200000000008)(63, 0.08551200000000012)(64, 0.0858940000000001)(65, 0.08630000000000013)(66, 0.08669000000000017)(67, 0.08705600000000013)(68, 0.08742000000000014)(69, 0.08781400000000007)(70, 0.08819600000000011)(71, 0.08858400000000015)(72, 0.08894600000000018)(73, 0.08935600000000024)(74, 0.08971400000000021)(75, 0.09008600000000012)(76, 0.09048000000000009)(77, 0.09086000000000008)(78, 0.09123200000000006)(79, 0.09162600000000007)(80, 0.09200000000000015)(81, 0.09239200000000032)(82, 0.09279000000000025)(83, 0.09315200000000014)(84, 0.09356200000000005)(85, 0.09393400000000006)(86, 0.09428400000000008)(87, 0.09469600000000016)(88, 0.09507600000000016)(89, 0.09545600000000022)(90, 0.0958000000000002)(91, 0.09622000000000012)(92, 0.0965960000000001)(93, 0.09697600000000009)(94, 0.09739200000000009)(95, 0.09774800000000004)(96, 0.09816200000000007)(97, 0.09850800000000011)(98, 0.09890400000000006)(99, 0.09930000000000004)(100, 0.09965000000000003)
+    };
+    \addlegendentry{Time}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\caption{LS + (Arc Restrictions)}
+\end{subfigure}
+\hfill
+\begin{subfigure}{.45\linewidth}
+\begin{center}
+\begin{tikzpicture}
+\begin{axis}[
+    width=\textwidth,
+    xlabel={Iteration Number},
+    ylabel={Average Score},
+    axis y line*=left,
+]
+\addplot[
+    color=blue,
+    style={thick}
+    ]
+    coordinates {
+    (1, 0.0)(2, 33.36999997199997)(3, 33.36999997199997)(4, 33.36999997199997)(5, 33.36999997199997)(6, 33.36999997199997)(7, 33.36999997199997)(8, 33.36999997199997)(9, 33.36999997199997)(10, 33.36999997199997)(11, 33.36999997199997)(12, 33.36999997199997)(13, 33.36999997199997)(14, 33.36999997199997)(15, 33.36999997199997)(16, 33.36999997199997)(17, 33.36999997199997)(18, 33.36999997199997)(19, 33.36999997199997)(20, 33.36999997199997)(21, 33.36999997199997)(22, 33.36999997199997)(23, 33.36999997199997)(24, 33.36999997199997)(25, 33.36999997199997)(26, 33.36999997199997)(27, 33.36999997199997)(28, 33.36999997199997)(29, 33.36999997199997)(30, 33.36999997199997)(31, 33.36999997199997)(32, 33.36999997199997)(33, 33.36999997199997)(34, 33.36999997199997)(35, 33.36999997199997)(36, 33.36999997199997)(37, 33.36999997199997)(38, 33.36999997199997)(39, 33.36999997199997)(40, 33.36999997199997)(41, 33.36999997199997)(42, 33.36999997199997)(43, 33.36999997199997)(44, 33.36999997199997)(45, 33.36999997199997)(46, 33.36999997199997)(47, 33.36999997199997)(48, 33.36999997199997)(49, 33.36999997199997)(50, 33.36999997199997)(51, 33.36999997199997)(52, 33.36999997199997)(53, 33.36999997199997)(54, 33.36999997199997)(55, 33.36999997199997)(56, 33.36999997199997)(57, 33.36999997199997)(58, 33.36999997199997)(59, 33.36999997199997)(60, 33.36999997199997)(61, 33.36999997199997)(62, 33.36999997199997)(63, 33.36999997199997)(64, 33.36999997199997)(65, 33.36999997199997)(66, 33.36999997199997)(67, 33.36999997199997)(68, 33.36999997199997)(69, 33.36999997199997)(70, 33.36999997199997)(71, 33.36999997199997)(72, 33.36999997199997)(73, 33.36999997199997)(74, 33.36999997199997)(75, 33.36999997199997)(76, 33.36999997199997)(77, 33.36999997199997)(78, 33.36999997199997)(79, 33.36999997199997)(80, 33.36999997199997)(81, 33.36999997199997)(82, 33.36999997199997)(83, 33.36999997199997)(84, 33.36999997199997)(85, 33.36999997199997)(86, 33.36999997199997)(87, 33.36999997199997)(88, 33.36999997199997)(89, 33.36999997199997)(90, 33.36999997199997)(91, 33.36999997199997)(92, 33.36999997199997)(93, 33.36999997199997)(94, 33.36999997199997)(95, 33.36999997199997)(96, 33.36999997199997)(97, 33.36999997199997)(98, 33.36999997199997)(99, 33.36999997199997)(100, 33.36999997199997)    }; \label{ls-graph-incremental}
+\end{axis}
+
+\begin{axis}[
+    width=\textwidth,
+    ylabel near ticks, yticklabel pos=right,
+    ylabel={Time (s)},
+    legend pos = {south east},
+    legend style={font=\scriptsize\selectfont},
+    legend image post style={scale=0.4},
+    hide x axis,
+    axis y line*=right,
+]
+\addlegendimage{/pgfplots/refstyle=ls-graph-incremental, blue,style=thick}\addlegendentry{Score}
+\addplot[
+    color=red,
+    style={thick}
+    ]
+    coordinates {
+(1, 0.6053679999999996)(2, 0.6054319999999993)(3, 0.6054559999999993)(4, 0.6054859999999994)(5, 0.6055339999999995)(6, 0.6055599999999994)(7, 0.6055979999999992)(8, 0.6056379999999996)(9, 0.6056619999999996)(10, 0.6056979999999996)(11, 0.6057319999999995)(12, 0.6057639999999994)(13, 0.6058059999999993)(14, 0.6058199999999992)(15, 0.6058459999999994)(16, 0.6058739999999995)(17, 0.6058979999999996)(18, 0.6059279999999997)(19, 0.6059679999999996)(20, 0.6060079999999997)(21, 0.6060439999999998)(22, 0.6060859999999997)(23, 0.6061139999999997)(24, 0.6061439999999998)(25, 0.60617)(26, 0.6061899999999998)(27, 0.6062199999999999)(28, 0.6062539999999997)(29, 0.6062940000000001)(30, 0.6063259999999999)(31, 0.606346)(32, 0.6063719999999999)(33, 0.6064119999999997)(34, 0.6064539999999996)(35, 0.6064899999999996)(36, 0.6065319999999997)(37, 0.6065539999999996)(38, 0.6065919999999997)(39, 0.6066179999999995)(40, 0.6066579999999997)(41, 0.6066859999999998)(42, 0.60672)(43, 0.606752)(44, 0.606764)(45, 0.6067919999999999)(46, 0.6068400000000002)(47, 0.6068680000000001)(48, 0.6069260000000002)(49, 0.606956)(50, 0.6070160000000003)(51, 0.6070480000000001)(52, 0.6070780000000001)(53, 0.6070940000000001)(54, 0.6071220000000002)(55, 0.6071640000000001)(56, 0.6071919999999998)(57, 0.6072279999999998)(58, 0.6072619999999999)(59, 0.607286)(60, 0.607322)(61, 0.6073460000000002)(62, 0.607372)(63, 0.6074099999999998)(64, 0.6074339999999997)(65, 0.6074619999999997)(66, 0.6074879999999998)(67, 0.6075219999999998)(68, 0.6075379999999998)(69, 0.6075699999999997)(70, 0.6076079999999996)(71, 0.6076319999999997)(72, 0.6076519999999997)(73, 0.6076899999999997)(74, 0.6077219999999998)(75, 0.6077499999999997)(76, 0.6078059999999997)(77, 0.6078539999999996)(78, 0.6078799999999998)(79, 0.6079279999999999)(80, 0.6079619999999998)(81, 0.6079839999999999)(82, 0.6080199999999999)(83, 0.6080499999999999)(84, 0.6080799999999997)(85, 0.6081139999999999)(86, 0.6081579999999996)(87, 0.6081919999999996)(88, 0.6082279999999995)(89, 0.6082499999999995)(90, 0.6082739999999995)(91, 0.6083079999999996)(92, 0.6083399999999998)(93, 0.608362)(94, 0.6083859999999999)(95, 0.608424)(96, 0.6084439999999999)(97, 0.6084679999999998)(98, 0.6084979999999998)(99, 0.6085339999999999)(100, 0.6085559999999999)    };
+\addlegendentry{Time}
+\end{axis}
+\end{tikzpicture}
+\end{center}
+\caption{LS + (No Backtracking)}
+\end{subfigure}
 \caption{Algorithm performance with unit scoring.}
+\label{fig:graphs-unit-scoring}
 \end{figure}
 
-\subsubsection{Scaled Scoring}
+\subsubsection{Length-Scaled Scoring}
+Intuitively, we would expect that two roads with identical qualities except for length would have different scores. Even though the longer road has the same qualities as the shorter one, it should be scored higher because the cyclist will spend more time traversing it. The unit-scoring experiments in section \ref{sec:unit-scoring} violate this assumption. We ran the same set of experiments from section \ref{sec:unit-scoring} changing only how we score roads. Roads are now scored by their GraphHopper priority value multiplied by their distance in meters ($priority * cost$).  
+
+\td{Write me}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|l|l|l|}
+    \hline
+    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} \\
+    \hline
+    VVA & 0 & 0 \\
+    \hline
+    LS & 0 & 0 \\
+    \hline
+    LS + (Budget Allowance) & 0 & 0 \\
+    \hline
+    LS + (Incremental Budget) & 0 & 0 \\
+    \hline
+    LS + (Arc Restrictions) & 0 & 0 \\
+    \hline
+    LS + (No Backtracking) & 0 & 0 \\
+    \hline
+\end{tabular}
+\caption{Algorithm performance with scaled scoring.}
+\end{center}
+\end{table}
 
 \subsection{Integer Programming}
 \label{sec:int-programming}
-\citeauthor{verbeeck2014extension} show that it is possible to model the AOP using Integer Programming.
+\citeauthor{verbeeck2014extension} introduce Integer Programming model for solving the AOP.
 
 \section{Future Work}
 
