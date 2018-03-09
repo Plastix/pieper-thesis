@@ -691,8 +691,8 @@ Our first experiment uses unit scoring. Thus, if two roads of different length h
     \hline
 \end{tabular}
 \caption{Algorithm performance with unit scoring.}
-\end{center}
 \label{tab:unit-scoring-results}
+\end{center}
 \end{table}
 
 Our results validate the performance of the baseline LS algorithm compared to the VVA algorithm. VVA has a number of substantial limitations. First, VVA has small score improvement at each iteration because it completes a number of idle iterations with no improvement (Figure \ref{fig:graphs-unit-scoring-vva}). This is because VVA simply runs DFS and checks to see if the solution after inserting an arc has improved score and is still within the cost budget. It does not consider the value or cost of the path segment being removed. Secondly, VVA has slow iteration because it has a large DFS search space. Even with a maximum depth search parameter, substantial feasibility checking is required, especially for road dense areas. At the end of 100 iterations, our VVA implementation produces a route in 20 seconds (Table \ref{tab:unit-scoring-results}). Third, VVA requires all-pairs shortest path to be precomputed which can be infeasible for large graphs. This is not an issue with our implementation since we are using contraction hierarchies which requires less pre-computation. 
