@@ -690,12 +690,12 @@ Our first experiment uses unit scoring. Thus, if two roads of different length h
     LS + (No Backtracking) & 33.36 & 0.60 & 55.6 \\
     \hline
 \end{tabular}
-\caption{Algorithm performance with unit scoring.}
+\caption{Algorithm performance after 100 iterations with unit scoring.}
 \label{tab:unit-scoring-results}
 \end{center}
 \end{table}
 
-Our results validate the performance of the baseline LS algorithm compared to the VVA algorithm. VVA has a number of substantial limitations. First, VVA has small score improvement at each iteration because it completes a number of idle iterations with no improvement (Figure \ref{fig:graphs-unit-scoring-vva}). This is because VVA simply runs DFS and checks to see if the solution after inserting an arc has improved score and is still within the cost budget. It does not consider the value or cost of the path segment being removed. Secondly, VVA has slow iteration because it has a large DFS search space. Even with a maximum depth search parameter, substantial feasibility checking is required, especially for road dense areas. At the end of 100 iterations, our VVA implementation produces a route in 20 seconds (Table \ref{tab:unit-scoring-results}). Third, VVA requires all-pairs shortest path to be precomputed which can be infeasible for large graphs. This is not an issue with our implementation since we are using contraction hierarchies which requires less pre-computation. 
+Our results validate the performance of the baseline LS algorithm compared to the VVA algorithm. VVA has a number of substantial limitations. First, VVA has small score improvement at each iteration because it completes a number of idle iterations\footnote{The ``wavy" time plot is a consequence of the ILS perturbation phase. Recall that if no route improvement is found, VVA increases the number of contiguous arcs that it removes. This means that on these iterations, the DFS search must find a longer path which takes more time.} with no improvement (Figure \ref{fig:graphs-unit-scoring-vva}). This is because VVA simply runs DFS and checks to see if the solution after inserting an arc has improved score and is still within the cost budget. It does not consider the value or cost of the path segment being removed. Secondly, VVA has slow iteration because it has a large DFS search space. Even with a maximum depth search parameter, substantial feasibility checking is required, especially for road dense areas. At the end of 100 iterations, our VVA implementation produces a route in 20 seconds (Table \ref{tab:unit-scoring-results}). Third, VVA requires all-pairs shortest path to be precomputed which can be infeasible for large graphs. This is not an issue with our implementation since we are using contraction hierarchies which requires less pre-computation. 
 
 Our LS baseline implementation produces a route with 6 times the score of VVA in less than 1.5 seconds (Table \ref{tab:unit-scoring-results}). In addition, it performs very few idle iterations (Figure \ref{fig:graphs-unit-scoring-ls}). This shows that the spatial pruning techniques and heuristics for modifying the solution work well together to both improve overall score and reduce the time required. LS finds an initial which is better than VVA's final route and slowly improves over the subsequent iterations.
 
@@ -703,6 +703,68 @@ The data shows that our intuition behind the LS Budget Allowance variant was cor
 
 The two final LS variants (Arc Restrictions and No Backtracking) have the same fault. They run much faster than the baseline but this is because after the first iteration they do no work. Both variants pose strict limitations on which arcs are allowed in the CAS. After the first iteration, the initial CAS gets pruned to the empty set so no route changes can be made. Both of these variants beat VVA's score at a minuscule fraction of the required time. However, neither comes close to LS baseline's score. If we consider Score to Time ratio, then Arc Restrictions variant wins out among all the algorithms and variants.
 
+\subsubsection{Length-Scaled Scoring}
+Intuitively, we would expect that two roads with identical qualities except for length would have different scores. Even though the longer road has the same qualities as the shorter one, it should be scored higher because the cyclist will spend more time traversing it. The unit-scoring experiments in section \ref{sec:unit-scoring} violate this assumption. We ran the same set of experiments from section \ref{sec:unit-scoring} changing only how we score roads. Roads are now scored by their GraphHopper priority value multiplied by their distance in meters ($priority * cost$).  
+
+\td{Write me}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|l|l|l|}
+    \hline
+    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} \\
+    \hline
+    VVA & 0 & 0 \\
+    \hline
+    LS & 0 & 0 \\
+    \hline
+    LS + (Budget Allowance) & 0 & 0 \\
+    \hline
+    LS + (Incremental Budget) & 0 & 0 \\
+    \hline
+    LS + (Arc Restrictions) & 0 & 0 \\
+    \hline
+    LS + (No Backtracking) & 0 & 0 \\
+    \hline
+\end{tabular}
+\caption{Algorithm performance with scaled scoring.}
+\end{center}
+\end{table}
+
+\subsubsection{Score Cutoff}
+\td{Write me}
+
+\subsection{Integer Programming}
+\label{sec:int-programming}
+\citeauthor{verbeeck2014extension} introduce an Integer Programming (IP) model for solving the AOP \cite{verbeeck2014extension}. IP is the class of problems where a linear function is optimized to a set of linear constraints using only integer variables \cite{ibm-int-programming}. IP is NP-Hard which makes it challenging to find optimal answers to such optimization problems. We modified the IP model introduced by \citeauthor{verbeeck2014extension} to only use a single starting node rather than a set. We removed the minimum score constraint.
+
+In the IP model, we are given an incomplete directed graph $G = (V,A)$, a start vertex $d \in V$, and a distance budget $B \in \RR$. Each arc $a \in V$ has a cost $c_a \in \RR$, a profit (or score) $p_a \in \RR$ and a complementary arc $\bar{a} \in A \cup \set{\emptyset}$. If two arcs are available in two directions between a pair of vertices then they are complementary arcs. In addition $\delta(S)$ is the set of outgoing arcs from $S$ to to $V \setminus S$ and $\lambda(S)$ is the set of incoming arcs from $S$ to $V \setminus S$.
+
+The decision variables variables of the IP are $x_a \in \set{0,1}$, $\forall a \in A$ and $z_v \in \ZZ^{\geq}$, $\forall v \in V$. If $x_a = 1$ then arc $a$ is chosen in the route otherwise it is 0. $z_v$ represents the number of times a vertex $v$ is visited by the path.
+
+\begin{align}
+\text{Maximize} \sum_{a \in A}{p_a * x_a} &\label{eq:ip-objective}\\  
+\sum_{a \in A}{c_a * x_a} &\leq \text{B} \label{eq:ip-cost}\\
+\sum_{a \in \lambda(v)}{x_a}  -\sum_{a \in \delta(v)}{x_a} &= 0 \quad \forall v \in V\label{eq:ip-flow}\\
+\sum_{a \in \delta(v)}{x_a} &= z_v \quad\forall v \in V \label{eq:ip-vertex}\\
+\sum_{a \in \delta(S)}{x_a} &\geq \frac{\sum_{v \in S}{z_v}}{\sum_{v \in S}{|\delta(v)|}} \quad \forall S \sse V \setminus \set{d} \label{eq:ip-subtour}\\
+z_d &= 1\label{eq:ip-start}\\
+x_a + x_{\bar{a}} &\leq 1 \quad \forall a \in A: \exists\bar{a} \in A\label{eq:ip-complement}
+\end{align}
+
+The objective function (\ref{eq:ip-objective}) maximizes the total collected score. Constraint (\ref{eq:ip-cost}) ensures that the total route cost is within the specific budget $B$. Constraints (\ref{eq:ip-flow}) and (\ref{eq:ip-vertex}) ensure that for vertices in the solution, the number of outgoing and incoming arcs are equal and equal to the number of times a vertex is visited. These can be thought of as ``flow constraints" limiting the route to contiguous arcs. With these constraints thus far, a valid solution to the IP may produce two disconnected loops. We want a single contiguous route. Constraint (\ref{eq:ip-subtour}) is a sub-tour constraint ensuring that there are no disconnected components of the route. This constraint operates on all \emph{subsets} of the vertex set. Constraint (\ref{eq:ip-start}) ensures the the start vertex $d$ is visited exactly once and constraint (\ref{eq:ip-complement}) ensures that an arc is taken in exactly one direction.
+ 
+
+We implemented a Java program to model and solve these constraints using Gurobi, a professional optimization solver. GraphHopper was used as a Java library to read the graph data to create variables and constraints. Constraint (\ref{eq:ip-subtour}) was the most challenging to implement since it is a constraint on all subsets. Because $V$ may be quite large and there are $2^n$ subsets of a set, there are two many subsets to try to enumerate all possible constraints. We implemented this constraint with a lazy constraint in Gurobi. Lazy constraints evaluate 
+
+Unfortunately, we were unable to get our Gurobi program halt and produce a valid optimal answer after multiple days of computation. We believe that there is some subtle bug in our implementation rather than lacking enough computation power. \citeauthor{verbeeck2014extension} solve their IP model using CPLEX, another professional optimization solver, and their graph takes about 6 hours. Since our graph is of comparable size, we would expect Gurobi to take around that long to solve our IP assuming our computers are of similar power.
+
+\section{Future Work}
+
+\section{Conclusions}
+
+\appendix
+\section{Figures}
 \begin{figure}[h]
 \begin{subfigure}{.45\linewidth}
 \begin{center}
@@ -745,8 +807,6 @@ The two final LS variants (Arc Restrictions and No Backtracking) have the same f
 \end{tikzpicture}
 \end{center}
 \caption{VVA}
-% TODO PUT ME SOMEWHERE
-%\footnote{The ``wavy" time plot is a consequence of the ILS perturbation phase. Recall that if no route improvement is found, VVA increases the number of contiguous arcs that it removes. This means that on these iterations, the DFS search must find a longer path which takes more time.}
 \label{fig:graphs-unit-scoring-vva}
 \end{subfigure}
 \hfill
@@ -962,42 +1022,6 @@ The two final LS variants (Arc Restrictions and No Backtracking) have the same f
 \caption{Algorithm performance with unit scoring.}
 \label{fig:graphs-unit-scoring}
 \end{figure}
-
-\subsubsection{Length-Scaled Scoring}
-Intuitively, we would expect that two roads with identical qualities except for length would have different scores. Even though the longer road has the same qualities as the shorter one, it should be scored higher because the cyclist will spend more time traversing it. The unit-scoring experiments in section \ref{sec:unit-scoring} violate this assumption. We ran the same set of experiments from section \ref{sec:unit-scoring} changing only how we score roads. Roads are now scored by their GraphHopper priority value multiplied by their distance in meters ($priority * cost$).  
-
-\td{Write me}
-
-\begin{table}[h]
-\begin{center}
-\begin{tabular}{|l|l|l|}
-    \hline
-    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} \\
-    \hline
-    VVA & 0 & 0 \\
-    \hline
-    LS & 0 & 0 \\
-    \hline
-    LS + (Budget Allowance) & 0 & 0 \\
-    \hline
-    LS + (Incremental Budget) & 0 & 0 \\
-    \hline
-    LS + (Arc Restrictions) & 0 & 0 \\
-    \hline
-    LS + (No Backtracking) & 0 & 0 \\
-    \hline
-\end{tabular}
-\caption{Algorithm performance with scaled scoring.}
-\end{center}
-\end{table}
-
-\subsection{Integer Programming}
-\label{sec:int-programming}
-\citeauthor{verbeeck2014extension} introduce Integer Programming model for solving the AOP.
-
-\section{Future Work}
-
-\section{Conclusions}
 
 \FloatBarrier
 \bibliographystyle{plainnat}
