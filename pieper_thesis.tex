@@ -61,7 +61,7 @@
 \maketitle
 
 \begin{abstract}
-Planning routes for recreational cyclists is challenging because they prefer longer more scenic paths, not the shortest one. This problem is modeled as an instance of the Arc Orienteering Problem (AOP), a known NP-Hard optimization problem. Because no known algorithms exist to solve this optimization problem efficiently, we focus on heuristic algorithms which trade accuracy for speed to solve the AOP. We implement and evaluate two different Iterated Local Search heuristic algorithms using an open source routing engine called GraphHopper and the OpenStreetMap data set.
+Planning routes for recreational cyclists is challenging because they prefer longer more scenic paths, not the shortest one. This problem is modeled as an instance of the Arc Orienteering Problem (AOP), a known NP-Hard optimization problem. Because no known algorithms exist to solve this optimization problem efficiently, we focus on heuristic algorithms which trade accuracy for speed to solve the AOP. We implement and evaluate two different Iterated Local Search heuristic algorithms using an open source routing engine called GraphHopper and the OpenStreetMap data set. Our experimental results show
 \td{FINISH ME} 
 
 \end{abstract}
@@ -706,33 +706,33 @@ The data shows that our intuition behind the LS Budget Allowance variant was cor
 
 The two final LS variants (Arc Restrictions and No Backtracking) have the same fault. They run much faster than the baseline but this is because after the first iteration they do no work. Both variants pose strict limitations on which arcs are allowed in the CAS. After the first iteration, the initial CAS gets pruned to the empty set so no route changes can be made. Both of these variants beat VVA's score at a minuscule fraction of the required time. However, neither comes close to LS baseline's score. If we consider Score to Time ratio, then Arc Restrictions variant wins out among all the algorithms and variants.
 
-\subsubsection{Length-Scaled Scoring}
-Intuitively, we would expect that two roads with identical qualities except for length would have different scores. Even though the longer road has the same qualities as the shorter one, it should be scored higher because the cyclist will spend more time traversing it. The unit-scoring experiments in section \ref{sec:unit-scoring} violate this assumption. We ran the same set of experiments from section \ref{sec:unit-scoring} changing only how we score roads. Roads are now scored by their GraphHopper priority value multiplied by their distance in meters ($priority * cost$).  
-
-\td{Write me}
-
-\begin{table}[h]
-\begin{center}
-\begin{tabular}{|l|l|l|}
-    \hline
-    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} \\
-    \hline
-    VVA & 0 & 0 \\
-    \hline
-    LS & 0 & 0 \\
-    \hline
-    LS + (Budget Allowance) & 0 & 0 \\
-    \hline
-    LS + (Incremental Budget) & 0 & 0 \\
-    \hline
-    LS + (Arc Restrictions) & 0 & 0 \\
-    \hline
-    LS + (No Backtracking) & 0 & 0 \\
-    \hline
-\end{tabular}
-\caption{Algorithm performance with scaled scoring.}
-\end{center}
-\end{table}
+%\subsubsection{Length-Scaled Scoring}
+%Intuitively, we would expect that two roads with identical qualities except for length would have different scores. Even though the longer road has the same qualities as the shorter one, it should be scored higher because the cyclist will spend more time traversing it. The unit-scoring experiments in section \ref{sec:unit-scoring} violate this assumption. We ran the same set of experiments from section \ref{sec:unit-scoring} changing only how we score roads. Roads are now scored by their GraphHopper priority value multiplied by their distance in meters ($priority * cost$).  
+%
+%\td{Write me}
+%
+%\begin{table}[h]
+%\begin{center}
+%\begin{tabular}{|l|l|l|}
+%    \hline
+%    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} \\
+%    \hline
+%    VVA & 0 & 0 \\
+%    \hline
+%    LS & 0 & 0 \\
+%    \hline
+%    LS + (Budget Allowance) & 0 & 0 \\
+%    \hline
+%    LS + (Incremental Budget) & 0 & 0 \\
+%    \hline
+%    LS + (Arc Restrictions) & 0 & 0 \\
+%    \hline
+%    LS + (No Backtracking) & 0 & 0 \\
+%    \hline
+%\end{tabular}
+%\caption{Algorithm performance with scaled scoring.}
+%\end{center}
+%\end{table}
 
 \subsubsection{Score Cutoff}
 The ILS trials in section \ref{sec:unit-scoring} are naive because they use a fixed iteration number as the algorithm stopping criterion. Many of these algorithms spend later iterations idle with no score improvement. Instead of using a fixed stopping criterion, we can terminate the algorithm based on score improvement over time. 
