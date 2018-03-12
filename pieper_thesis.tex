@@ -61,8 +61,7 @@
 \maketitle
 
 \begin{abstract}
-Planning routes for recreational cyclists is challenging because they prefer longer more scenic paths, not the shortest one. This problem is modeled as an instance of the Arc Orienteering Problem (AOP), a known NP-Hard optimization problem. Because no known algorithms exist to solve this optimization problem efficiently, we focus on heuristic algorithms which trade accuracy for speed to solve the AOP. We implement and evaluate two different Iterated Local Search heuristic algorithms using an open source routing engine called GraphHopper and the OpenStreetMap data set. Our experimental results show
-\td{FINISH ME} 
+Planning routes for recreational cyclists is challenging because they prefer longer more scenic paths, not the shortest one. This problem is modeled as an instance of the Arc Orienteering Problem (AOP), a known NP-Hard optimization problem. Because no known algorithms exist to solve this optimization problem efficiently, we focus on heuristic algorithms which trade accuracy for speed to solve the AOP. We implement and evaluate two different Iterated Local Search (ILS) heuristic algorithms using an open source routing engine called GraphHopper and the OpenStreetMap data set. We propose some ILS variants which our experimental results show can produce better routes at the penalty of time. 
 
 \end{abstract}
 
@@ -793,11 +792,22 @@ We implemented a Java program to model and solve these constraints using Gurobi,
 
 Unfortunately, we were unable to get our Gurobi program halt and produce a valid optimal answer after multiple days of computation. We believe that there is some subtle bug in our implementation rather than lacking enough computation power. \citeauthor{verbeeck2014extension} solve their IP model using CPLEX, another professional optimization solver, and their graph takes about 6 hours. Since our graph is of comparable size, we would expect Gurobi to take around that long to solve our IP assuming our computer is of similar power.
 
-\section{Future Work}
-\td{Write me}
-
 \section{Conclusion}
 This research studied algorithms for generating bike routes for recreational road cyclists. We followed existing literature and formulated the problem as an instance of the AOP, a NP-Hard optimization problem. We focused on implementing and evaluating two ILS heuristic algorithms \cite{verbeeck2014extension} \cite{lu2015arc} for the AOP using open source mapping tools. When using naive ILS stopping criteria, our experimental results validate previous work by \cite{lu2015arc} by showing that spatial techniques are effective at reducing the search space and speeding up the route generation time. When using smarter ILS stopping criteria, our results show that spatial techniques may not drastically speed up the search. However, the other heuristics proposed by \cite{lu2015arc} do lead to much higher scoring rotes. Some of our proposed ILS variants lead to higher scoring routes but at the penalty of longer generation time.
+
+\subsection{Future Work}
+With more time, we hope to run additional experimental tests of the algorithm variants. In our tests, the road graph, starting location and cost budget are fixed. More tests should be run varying all three of these parameters to see if our results generalize.  
+
+Road scoring mechanisms have much room for improvement. In our research, we used GraphHopper's built-in bike preferability value as the road score. This choice was practical as it allowed us to focus on the algorithms themselves instead of building the road graph. However, since this scoring relies on metadata from OpenStreetMaps, this scoring may be inaccurate. Further research could work on improving road scoring by using other datasets such as road popularity among cyclists. In addition, changing the scoring metrics may change how these algorithms perform.
+
+Lastly, we hope to continue work on our Gurobi Integer Program solution to get an optimal route score as a baseline. This will allow us give absolute accuracy measurements of the algorithms as opposed to relative comparisons.
+
+\subsection{Acknowledgements}
+\begin{itemize}
+    \item I would like to thank David Frey of the Union College Computer Science Department for helping me set up the computing resources to run my experiments.
+    \item I would like to thank Robin (``boldtrn") of the GraphHopper open source project for answering my questions online.   
+\end{itemize}
+
 
 \appendix
 %\section{Figures}
