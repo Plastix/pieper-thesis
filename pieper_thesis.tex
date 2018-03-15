@@ -16,7 +16,7 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{pgfplots}
-\usepackage{lscape}
+\usepackage[toc,page]{appendix}
 \usepackage{hyperref}
 \usepackage[capitalise]{cleveref} % Must be loaded after hyperref
 
@@ -178,7 +178,7 @@ While multiple route factors are important to recreational cyclists, the focus o
 \subsection{Research Question}
 As mentioned in \cref{sec:relatedwork}, existing literature models cycle trip planning as an instance of the AOP. This research follows the existing literature and focuses on implementing and improving existing AOP algorithms for cycle route planning. 
 
-Since road networks can be quite large and because the AOP is NP-Hard, searching for the optimal route may take an unacceptable amount of time. Since we care more about finding a good route than finding the best possible route, we trade off optimality for speed. However, even AOP approximation algorithms are too slow for applications where a fast response time (on the order of milliseconds) is required \cite{lu2015arc}. Therefore, we focus on heuristic algorithms for route generation. Both \citeauthor{verbeeck2014extension} and \citeauthor{lu2015arc} propose heuristic algorithms which follow the Iterated Local Search (ILS) framework. This framework, and their respective algorithms are the focus of the following sections. Thus, our research question is as follows:
+Since road networks can be quite large and because the AOP is NP-Hard, searching for the optimal route may take an unacceptable amount of time. Since we care more about finding a good route than finding the best possible route, we trade off optimality for speed. However, even AOP approximation algorithms are too slow for applications where a response time on the order of milliseconds is required \cite{lu2015arc}. Therefore, we focus on heuristic algorithms for route generation. Both \citeauthor{verbeeck2014extension} and \citeauthor{lu2015arc} propose heuristic algorithms which follow the Iterated Local Search (ILS) framework. This framework, and their respective algorithms are the focus of the following sections. Thus, our research question is as follows:
 
 \begin{quote}
     To what extent can ILS algorithms be improved to generate better bike routes?
@@ -187,9 +187,9 @@ Since road networks can be quite large and because the AOP is NP-Hard, searching
 In the following sections we refer to the the algorithm proposed by \citeauthor{verbeeck2014extension} as the \emph{VVA Algorithm} and the algorithm proposed by \citeauthor{lu2015arc} as the \emph{LS Algorithm}.
 
 \subsection{Methods}
-We implement the VVA and LS algorithms using an open source routing engine named GraphHopper. We made initial observations by running these algorithms on a subset of the New York State road network using public mapping data from the OpenStreetMap foundation. These observations lead us to create four variants of the LS algorithm. We then ran experiments on a small road network to compare the relative performance of these algorithms and our variants. We also pursued an absolute algorithm evaluation by attempting solve an Integer Program model of the AOP. 
+We implement the VVA and LS algorithms using an open source routing engine named GraphHopper. We make initial observations by running these algorithms on a subset of the New York State road network using public mapping data from the OpenStreetMap foundation. These observations lead us to create four variants of the LS algorithm. We then ran experiments on a small road network to compare the relative performance of these algorithms and our variants. We also pursue an absolute algorithm evaluation by attempting solve an Integer Program model of the AOP. 
 
-Our experimental results show that the LS algorithm is faster than the VVA algorithm but not substantially. However, the LS algorithm does produce substantially higher scoring routes than VVA. Our LS variants can produce even higher scoring routes than the baseline LS algorithm but at a cost of time. We were unable to validate the claimed response time of the LS algorithm.
+Our experimental results show that the LS algorithm is faster than the VVA algorithm but not substantially. However, the LS algorithm does produce substantially higher scoring routes than VVA. Our LS variants can produce even higher scoring routes than the baseline LS algorithm but at a cost of time. We are unable to validate the claimed response time of the LS algorithm.
 
 The remainder of this paper explains this process in detail. \cref{sec:prelim} contains background information on ILS, VVA, and LS.
 
@@ -199,6 +199,8 @@ The remainder of this paper explains this process in detail. \cref{sec:prelim} c
 
 \section{Preliminaries}
 \label{sec:prelim}
+This section outlines the background 
+
 
 \subsection{Iterated Local Search}
 Iterated Local Search (ILS) is a framework for solving optimization problems using heuristic search algorithms. A heuristic is a technique used to solve a problem quickly when exact or approximation methods are too slow. Heuristic algorithms can be thought of as ``shortcuts" in that they trade optimality and completeness for speed. Heuristics are often used in search algorithms to  determine which branch of the search to take but are not guaranteed to produce the best solution. A heuristic algorithm is commonly referred to as a heuristic.
@@ -233,7 +235,7 @@ Despite its simplicity, ILS can be challenging to implement efficiently because 
 
 \subsection{VVA Algorithm}
 %\td{The graph $G$ is never passed in anywhere in the pseudocode??}
-The local search algorithm proposed by \citeauthor{verbeeck2014extension} is a modified version of Depth First Search (Algorithm \ref{alg:dfs}). It is implemented as a recursive function which used to to find a path between two disconnected nodes in the bike route. The algorithm is allowed to ``take" an outgoing edge and add it to the current route as long as it has not been traversed before and the shortest path from the end of the traversed arc to the destination is less than the remaining distance after taking the arc (Line \ref{alg:dfs:feasability}). In other words, it must be \emph{feasible} to get from the end of the chosen arc to the desired destination after traversing the arc. 
+The local search algorithm proposed by \citeauthor{verbeeck2014extension} is a modified version of Depth First Search (Algorithm \ref{alg:dfs}). It is implemented as a recursive function which used to to find a path between two disconnected nodes in the bike route. The algorithm is allowed to ``take" an outgoing edge and add it to the current route as long as it has not been traversed before and the shortest path from the end of the traversed arc to the destination is less than the remaining distance budget after taking the arc (Line \ref{alg:dfs:feasability}). In other words, it must be \emph{feasible} to get from the end of the chosen arc to the desired destination after traversing the arc. 
 
 \begin{figure}
 \begin{center}
@@ -733,6 +735,20 @@ The data shows that our intuition behind the LS Budget Allowance variant was cor
 
 The two final LS variants (Arc Restrictions and No Backtracking) have the same fault. They run much faster than the baseline but this is because after the first iteration they do no work. Both variants pose strict limitations on which arcs are allowed in the CAS. After the first iteration, the initial CAS gets pruned to the empty set so no route changes can be made. Both of these variants beat VVA's score at a minuscule fraction of the required time. However, neither comes close to LS baseline's score. If we consider Score to Time ratio, then Arc Restrictions variant wins out among all the algorithms and variants.
 
+% INDIVIDUAL GRAPHS
+\begin{figure}
+\input{individual_graphs.tikz}
+\caption{Algorithm performance with unit scoring.}
+\label{fig:graphs-unit-scoring}
+\end{figure}
+
+
+% COMBINED GRAPH
+\begin{figure}
+\input{combined_graph.tikz}
+\caption{Performance of all algorithms using unit-scoring.}
+\end{figure}
+
 %\subsubsection{Length-Scaled Scoring}
 %Intuitively, we would expect that two roads with identical qualities except for length would have different scores. Even though the longer road has the same qualities as the shorter one, it should be scored higher because the cyclist will spend more time traversing it. The unit-scoring experiments in section \ref{sec:unit-scoring} violate this assumption. We ran the same set of experiments from section \ref{sec:unit-scoring} changing only how we score roads. Roads are now scored by their GraphHopper priority value multiplied by their distance in meters ($priority * cost$).  
 %
@@ -834,21 +850,19 @@ Lastly, we hope to continue work on our Gurobi Integer Program solution to get a
 I would like to thank David Frey of the Union College Computer Science Department for helping me set up the computing resources to run my experiments. I would like to thank Robin (``boldtrn") of the GraphHopper open source project for answering my questions online.   
 
 
-\appendix
+\begin{appendices}
+
+\section{LS Algorithm Details}
+\td{WRITE ME}
+
+\section{ILS Implementation Code}
+\td{WRITE ME}
+    
+\end{appendices}
+
 %\section{Figures}
 
-\begin{figure}
-\input{individual_graphs.tikz}
-\caption{Algorithm performance with unit scoring.}
-\label{fig:graphs-unit-scoring}
-\end{figure}
 
-
-% COMBINED GRAPH
-\begin{figure}
-\input{combined_graph.tikz}
-\caption{Performance of all algorithms using unit-scoring.}
-\end{figure}
 
 \FloatBarrier
 \bibliographystyle{plainnat}
