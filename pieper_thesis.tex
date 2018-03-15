@@ -1,4 +1,4 @@
-\documentclass[11pt]{article}
+\documentclass[honors]{union-cs-thesis}
 
 \usepackage{fullpage}
 \usepackage{url}
@@ -55,15 +55,33 @@
 \newcommand{\td}{\todo[inline]}
 
 \begin{document}
+\pagenumbering{roman}
 
 \title{Heuristic Algorithms for Bike Route Generation}
-\author{Aidan Pieper}
+\author{Aidan R. Pieper}
+\date{\today}
+
+% The three commands below are only used when the honors option is
+% passed to \documentclass.  
+\authorLF{Pieper, Aidan R.}
+\dept{Department of Computer Science}
+\advisor{Matthew Anderson}
+
 \maketitle
 
 \begin{abstract}
+\makeabstract
+
 Planning routes for recreational cyclists is challenging because they prefer longer more scenic routes, not the shortest one. This problem is modeled as an instance of the Arc Orienteering Problem (AOP), a known NP-Hard optimization problem. Because no known algorithms exist to solve this optimization problem efficiently, we solve the AOP using  heuristic algorithms which trade accuracy for speed. We implement and evaluate two different Iterated Local Search (ILS) heuristic algorithms using an open source routing engine called GraphHopper and the OpenStreetMap data set. We propose ILS variants which our experimental results show can produce better routes at the penalty of time. 
 
 \end{abstract}
+
+\tableofcontents
+\listoffigures % empty if using condensed formatting
+\listoftables % empty if using condensed formatting
+\makepreamble
+
+\pagenumbering{arabic}
 
 \section{Introduction}
 Cycling is a popular and diverse activity enjoyed by millions of people all over the world. To some, cycling is a means of commuting to work while to others it is a recreational sport.  The quality of cycling infrastructure varies across the globe. In countries like Belgium and the Netherlands where cycling is a popular recreational sport, there are vast networks of bicycle-friendly secondary roads \cite{souffriau2011planning}. However, many places do not have this same level of cycling infrastructure so bike riders must share highways with other road vehicles.
