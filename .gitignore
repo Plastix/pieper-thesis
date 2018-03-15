@@ -255,3 +255,5 @@ Temporary Items
 
 
 # End of https://www.gitignore.io/api/latex,macos
+!combined_graph.tikz
+!individual_graphs.tikz
