@@ -18,7 +18,7 @@
 \usepackage{pgfplots}
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
-\usepackage[capitalise]{cleveref} % Must be loaded after hyperref
+\usepackage[capitalise, noabbrev]{cleveref} % Must be loaded after hyperref
 
 \pgfplotsset{compat=1.3}
 \usetikzlibrary{pgfplots.external}
@@ -105,11 +105,11 @@ Route planning for recreational cyclists poses a fundamentally different problem
 \subsection{Related work} \label{sec:relatedwork}
 In the literature, planning preferable cycling routes is modeled as an instance of the Arc Orienteering Problem (AOP), a variant of the Orienteering Problem (OP) \cite{souffriau2011planning}. First introduced in 1987 by \citeauthor{golden1987orienteering}, the classical OP is a combination of node selection and determining shortest paths between nodes in a graph \cite{golden1987orienteering}. The OP is a hybrid between two classical combinatorial problems, the Knapsack Problem and the Traveling Salesman Problem\footnote{The OP may sometimes be referred to as the \emph{Selective} Traveling Salesman Problem \cite{laporte1990selective}.}. In the classical OP, each node in the graph is assigned a non-negative score and a non-negative cost. Given a starting node, a destination node, and some maximum cost budget, the objective is to determine a non-repeating path which starts at the starting node, visits some subset of the graph nodes, and ends at the destination node \cite{gunawan2016orienteering}. In addition, the solution path must both maximize the total collected score, accrued from visiting a node, and keep the total collected cost under the specified budget.
 
-The AOP is the arc variant of the OP where each arc, i.e., graph edge, is given a score and a cost. In the AOP, scores and costs are accrued from visiting an arc instead of a node. For example, Figure \ref{fig:aop-example} shows an undirected AOP instance where $S$ is the start node, $D$ is the destination node, the budget is 10, and every edge is labeled (score, cost). The shortest path is $S \rightarrow (10,3) \rightarrow (5,5) \rightarrow D$ which has a cost of 8 and a score of 15. However, for the specified budget, $S \rightarrow (20,1) \rightarrow (3,2) \rightarrow (2,2) \rightarrow (5,5) \rightarrow D$ is the optimal solution with a score of 30 and a cost of 10. The optimal solution is clearly not the shortest path but rather the path with the maximal score constrained by the cost budget.
+The AOP is the arc variant of the OP where each arc, i.e., graph edge, is given a score and a cost. In the AOP, scores and costs are accrued from visiting an arc instead of a node. For example, \cref{fig:aop-example} shows an undirected AOP instance where $S$ is the start node, $D$ is the destination node, the budget is 10, and every edge is labeled (score, cost). The shortest path is $S \rightarrow (10,3) \rightarrow (5,5) \rightarrow D$ which has a cost of 8 and a score of 15. However, for the specified budget, $S \rightarrow (20,1) \rightarrow (3,2) \rightarrow (2,2) \rightarrow (5,5) \rightarrow D$ is the optimal solution with a score of 30 and a cost of 10. The optimal solution is clearly not the shortest path but rather the path with the maximal score constrained by the cost budget.
 
 Previous research shows that both the OP and the AOP are NP-Hard problems for directed and undirected graphs. No algorithms are known to exist to \emph{optimally} solve the AOP or OP in polynomial time. While there is considerable research into the OP and its variants, there is less research into the AOP. \citeauthor{gunawan2016orienteering} provide an exhaustive survey of the OP and its variants, but the AOP is clearly over shadowed by other OP variants in the literature \cite{gunawan2016orienteering}.
 
-\begin{figure}[h]
+\begin{figure}
 \begin{center}
     \begin{tikzpicture}[auto,x=1.25cm, y=1.25cm,line width=0.5mm]
     
@@ -553,7 +553,7 @@ This backtracking shown in Figure \ref{fig:ls-routes} may be undesirable for cyc
 
 Our research implementing the LS algorithm in GraphHopper lead us to the following observations about the algorithm:
 \begin{enumerate}
-    \item LS does not avoid backtracking when creating blank path segments or when computing arc feasability.
+    \item LS does not avoid backtracking when creating blank path segments or when computing arc feasibility.
     \item LS tries to get as close to the cost budget as possible.
     \item LS puts very few restrictions on what is considered an attractive arc.
     \item LS does not penalize turns.
@@ -582,15 +582,15 @@ Second, this blacklisting process does not work well with contraction hierarchie
 
 
 \section{Data}
-We ran a series of experiments to evaluate the performance of the VVA algorithm, the LS algorithm, and our LS variants. 
+We ran a series of experiments to evaluate the performance of the VVA algorithm, the LS algorithm, and our LS variants. This section discusses our data set, data collection process, and experimental results.
 
 \subsection{Data Set}
 Our data set is a OpenStreetMap file\footnote{In Protocolbuffer Binary Format (.pbf). PBF is an alternative to the XML format which provides better compression.} corresponding to 350 square kilometers centered around Galway, NY. The free online tool \emph{BBBike Extract} \cite{bbbike} was used to obtain the data. When parsed by GraphHopper, the internal graph representation contains 2425 directed arcs and 982 nodes. We chose this dataset because it is relatively small and is moderately road dense. The size of the road network was also chosen to make an Integer Programming evaluation feasible. See \cref{sec:int-programming} for more information on this approach.
 
 \subsection{Data Collection}
-We ran 500 trials of each algorithm configuration (Table \ref{tab:algo-configs}) fixing the start location, the cost budget, and the number of ILS iterations. To achieve circular routes, the start and end location was fixed at GPS position $(43.009327, -74.009166)$, the center of our OSM data set. The cost budget was fixed at 40 kilometers. The number of iterations was fixed at 100. Our experiments use unit scoring. Thus, if two roads of different length have the same priority value by GraphHopper then they have the same score which is its priority value directly. 
+We ran 500 trials of each algorithm configuration (\cref{tab:algo-configs}) fixing the start location, the cost budget, and the number of ILS iterations. To achieve circular routes, the start and end location was fixed at GPS position $(43.009327, -74.009166)$, the center of our OSM data set. The cost budget was fixed at 40 kilometers. The number of iterations was fixed at 100. Our experiments use unit scoring. Thus, if two roads of different length have the same priority value by GraphHopper then they have the same score which is its priority value directly. These choices are mostly arbitrary. The iteration number and cost budget were chosen to be similar to the experimental tests run by \citeauthor{verbeeck2014extension} and \citeauthor{lu2015arc}.
 
-The ILS algorithms were modified to record the current solution score and elapsed time at each iteration. These values were written to a single CSV file for each algorithm configuration. For each configuration, average scores and average times were calculated using pivot tables with Python and Pandas\footnote{A data manipulation and analysis Python package.}. The experimental runs were performed on a computer with 4 Intel Xeon E5620 processors and 16GB of RAM running Ubuntu 16.04.03 LTS Desktop.
+The ILS algorithms were modified to record the current solution score and elapsed time at each iteration. These values were written to a single CSV file for each algorithm configuration. For each configuration, average scores and average times were calculated using pivot tables with Python and Pandas\footnote{A Python package for data manipulation and analysis.}. The experimental runs were performed on a computer with 4 Intel Xeon E5620 processors and 16GB of RAM running Ubuntu 16.04.03 LTS Desktop.
 
 \begin{table}
 \begin{center}
@@ -606,9 +606,11 @@ LS + (Budget Allowance) & $p_{min}=0.5$ \\
 \hline
 LS + (Incremental Budget) & $p_{min}=0.5$ \\
 \hline
-LS + (Arc Restrictions) & $minRoadLength=1km$; $minRoadScore=0.5$  \\
+LS + (Arc Restrictions) & $minRoadLength=1km$, $minRoadScore=0.5$  \\
 \hline
 LS + (No Backtracking) & N/A \\
+\hline
+LS + (Budget Allowance) + (Arc Restrictions) & $minRoadLength=1km$, $minRoadScore=0.5$, $p_{min}=0.5$   \\
 \hline
 \end{tabular}
 \end{center}
@@ -618,7 +620,29 @@ LS + (No Backtracking) & N/A \\
 
 \subsection{Experimental Results}
 
+\td{Transition + route images here}
+
+\begin{figure}
+\begin{subfigure}{.48\linewidth}
+\centering
+\includegraphics[width=\textwidth]{figs/ls-route-mins}
+\caption{Example route generated by LS + (Arc Restrictions)}
+\label{fig:ls-arc-restrictions}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.48\linewidth}
+\centering
+\includegraphics[width=\textwidth]{figs/ls-route-no-backtracking}
+\caption{Example route generated by LS + (No Backtracking)}
+\label{fig:ls-no-backtracking}
+\end{subfigure}\\[1ex]
+\caption{Example routes generated by our LS variants implemented with GraphHopper.}
+\label{fig:ls-route-variants}
+\end{figure}
+
 \subsubsection{Iteration Cutoff}
+\cref{tab:unit-scoring-results} shows the times and scores of each algorithm configuration after 100 iterations. Independent plots of score and time versus iteration number are shown in \cref{fig:graphs-unit-scoring-ls}. A combined plot of variant score versus iteration number is shown in \cref{fig:graphs-combined-unit-scoring}.
+
 \label{sec:unit-scoring}
 \begin{table}
 \begin{center}
@@ -664,40 +688,23 @@ The two final LS variants (Arc Restrictions and No Backtracking) have the same f
 \begin{figure}
 \input{combined_graph.tikz}
 \caption{Performance of all algorithms using unit-scoring.}
+\label{fig:graphs-combined-unit-scoring}
 \end{figure}
 
-%\subsubsection{Length-Scaled Scoring}
-%Intuitively, we would expect that two roads with identical qualities except for length would have different scores. Even though the longer road has the same qualities as the shorter one, it should be scored higher because the cyclist will spend more time traversing it. The unit-scoring experiments in section \ref{sec:unit-scoring} violate this assumption. We ran the same set of experiments from section \ref{sec:unit-scoring} changing only how we score roads. Roads are now scored by their GraphHopper priority value multiplied by their distance in meters ($priority * cost$).  
-%
-%\td{Write me}
-%
-%\begin{table}[h]
-%\begin{center}
-%\begin{tabular}{|l|l|l|}
-%    \hline
-%    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} \\
-%    \hline
-%    VVA & 0 & 0 \\
-%    \hline
-%    LS & 0 & 0 \\
-%    \hline
-%    LS + (Budget Allowance) & 0 & 0 \\
-%    \hline
-%    LS + (Incremental Budget) & 0 & 0 \\
-%    \hline
-%    LS + (Arc Restrictions) & 0 & 0 \\
-%    \hline
-%    LS + (No Backtracking) & 0 & 0 \\
-%    \hline
-%\end{tabular}
-%\caption{Algorithm performance with scaled scoring.}
-%\end{center}
-%\end{table}
+Our results validate the performance of the baseline LS algorithm compared to the VVA algorithm. VVA has a number of substantial limitations. First, VVA has small score improvement at each iteration because it completes a number of idle iterations with no improvement (\cref{fig:graphs-unit-scoring-vva}\footnote{The ``wavy" time plot is a consequence of the ILS perturbation phase. Recall that if no route improvement is found, VVA increases the number of contiguous arcs that it removes. This means that on these iterations, the DFS search must find a longer path which takes more time.}). This is because VVA simply runs DFS and checks to see if the solution after inserting an arc has improved score and is still within the cost budget. It does not consider the value or cost of the path segment being removed. Secondly, VVA has slow iteration because it has a large DFS search space. Even with a maximum depth search parameter, substantial feasibility checking is required, especially for road dense areas. At the end of 100 iterations, our VVA implementation produces a route in 20 seconds (\cref{tab:unit-scoring-results}). Third, VVA requires all-pairs shortest path to be precomputed which can be infeasible for large graphs. This is not an issue with our implementation since we are using contraction hierarchies which requires less pre-computation. 
+
+Our LS baseline implementation produces a route with 6 times the score of VVA in less than 1.5 seconds (\cref{tab:unit-scoring-results}). In addition, it performs very few idle iterations (\cref{fig:graphs-unit-scoring-ls}). This shows that the spatial pruning techniques and heuristics for modifying the solution work well together to both improve overall score and reduce the time required. LS finds an initial which is better than VVA's final route and slowly improves over the subsequent iterations.
+
+The data shows that our intuition behind the LS Budget Allowance variant was correct. Saving cost budget for later iterations generates a route with 70\% score improvement when compared to the baseline algorithm. However, this variant pays a big penalty in time because the route generation time is nearly 20 times longer. The LS Incremental Budget variant produces an even higher score than Budget Allowance, but the time required to produce such a route is 100 times that of the LS baseline. Since the remaining budget is not decreasing sharply after the first iteration, these variants have to spend time computing and updating larger CASs.
+
+The two final LS variant, Arc Restrictions and No Backtracking, have the same fault. They run much faster than the baseline but this is because after the first iteration they do no work. Both variants pose strict limitations on which arcs are allowed in the CAS. After the first iteration, the initial CAS gets pruned to the empty set so no route changes can be made. Both of these variants beat VVA's score at a minuscule fraction of the required time. However, neither comes close to LS baseline's score. If we consider Score to Time ratio, then Arc Restrictions variant wins out among all the algorithms and variants.
+
+\td{Write about combined variant}
 
 \subsubsection{Score Cutoff}
-The ILS trials in section \ref{sec:unit-scoring} are naive because they use a fixed iteration number as the algorithm stopping criterion. Many of these algorithms spend later iterations idle with no score improvement. Instead of using a fixed stopping criterion, we can terminate the algorithm based on score improvement over time. 
+The ILS trials in \cref{sec:unit-scoring} are naive because they use a fixed iteration number as the algorithm stopping criterion. Many of these algorithms spend later iterations idle with no score improvement. Instead of using a fixed stopping criterion, we can terminate the algorithm based on score improvement over time. 
 
-We use the data from section \ref{sec:unit-scoring} to simulate the stopping point of the algorithms with this halting method. At each iteration, we calculate the percent change of the score from the previous iteration. If the score improvement is less than 1\% for three consecutive iterations, then the algorithm terminates.    
+We use the data from \cref{sec:unit-scoring} to simulate the stopping point of the algorithms with this halting method. At each iteration, we calculate the percent change of the score from the previous iteration. If the score improvement is less than 1\% for three consecutive iterations, then the algorithm terminates.    
 
 \begin{table}
 \begin{center}
