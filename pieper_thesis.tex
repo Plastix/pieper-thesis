@@ -581,18 +581,17 @@ First, blacklisting roads may break the shortest path computation. In a connecte
 Second, this blacklisting process does not work well with contraction hierarchies. Recall that a contraction-hierarchy shortest-path algorithm traverses over contracted ``shortcut" edges in the graph. The actual returned shortest path is recreated by finding the original roads which these shortcuts skip over. When determining if a road is blacklisted in our shortest path traversal, we need to check whether our current road is a shortcut and if it is, make sure none of the roads it skips are also blacklisted. This is quite challenging since a shortcut may skip multiple roads and may skip other shortcut edges. This means that we need to recursively ``unpack" a shortcut (and any skipped shortcuts)  before we can determine if we should avoid the arc. This is effectively undoing all the pre-computation that is done when the contraction hierarchy is initialized. In order to avoid this problem, our no-backtracking variant does not use a contraction hierarchy shortest-path algorithm.
 
 
-\section{Evaluation}
+\section{Data}
 We ran a series of experiments to evaluate the performance of the VVA algorithm, the LS algorithm, and our LS variants. 
 
 \subsection{Data Set}
-Our data set is a OpenStreetMap file\footnote{In Protocolbuffer Binary Format (.pbf). PBF is an alternative to the XML format which provides better compression.} corresponding to 350 square kilometers centered around Galway, NY. The free online tool \emph{BBBike Extract} (\url{https://extract.bbbike.org/}) was used to obtain the data. When parsed by GraphHopper, the internal graph representation contains 2425 directed arcs and 982 nodes. We chose this dataset because it is relatively small and is moderately road dense. The size of the road network was also chosen to make an Integer Programming evaluation feasible. See section \ref{sec:int-programming} for more information on this approach.
+Our data set is a OpenStreetMap file\footnote{In Protocolbuffer Binary Format (.pbf). PBF is an alternative to the XML format which provides better compression.} corresponding to 350 square kilometers centered around Galway, NY. The free online tool \emph{BBBike Extract} \cite{bbbike} was used to obtain the data. When parsed by GraphHopper, the internal graph representation contains 2425 directed arcs and 982 nodes. We chose this dataset because it is relatively small and is moderately road dense. The size of the road network was also chosen to make an Integer Programming evaluation feasible. See \cref{sec:int-programming} for more information on this approach.
 
 \subsection{Data Collection}
-We ran 500 trials of each algorithm configuration (Table \ref{tab:algo-configs}) fixing the start location, the cost budget, and the number of ILS iterations. To achieve circular routes, the start and end location was fixed at GPS position $(43.009327, -74.009166)$, the center of our OSM data set. The cost budget was fixed at 40 kilometers. The number of iterations was fixed at 100.
+We ran 500 trials of each algorithm configuration (Table \ref{tab:algo-configs}) fixing the start location, the cost budget, and the number of ILS iterations. To achieve circular routes, the start and end location was fixed at GPS position $(43.009327, -74.009166)$, the center of our OSM data set. The cost budget was fixed at 40 kilometers. The number of iterations was fixed at 100. Our experiments use unit scoring. Thus, if two roads of different length have the same priority value by GraphHopper then they have the same score which is its priority value directly. 
 
-The ILS algorithms were modified to record the current solution score and elapsed time at each iteration. These values were written to a single CSV file for each algorithm configuration. For each configuration, average scores and average times were calculated using pivot tables with Python and Pandas\footnote{A data manipulation and analysis Python package.}.
+The ILS algorithms were modified to record the current solution score and elapsed time at each iteration. These values were written to a single CSV file for each algorithm configuration. For each configuration, average scores and average times were calculated using pivot tables with Python and Pandas\footnote{A data manipulation and analysis Python package.}. The experimental runs were performed on a computer with 4 Intel Xeon E5620 processors and 16GB of RAM running Ubuntu 16.04.03 LTS Desktop.
 
-\td{Trials were conducted on?? Ask Matt about machine specs.}
 \begin{table}
 \begin{center}
 \begin{tabular}{|l|l|}
@@ -619,10 +618,8 @@ LS + (No Backtracking) & N/A \\
 
 \subsection{Experimental Results}
 
-\subsubsection{Unit Scoring}
+\subsubsection{Iteration Cutoff}
 \label{sec:unit-scoring}
-Our experiment uses unit scoring. Thus, if two roads of different length have the same priority value by GraphHopper then they have the same score (its priority value directly). 
-
 \begin{table}
 \begin{center}
 \begin{tabular}{|l|l|l|l|}
