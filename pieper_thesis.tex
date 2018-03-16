@@ -14,7 +14,7 @@
 \usepackage[ruled, vlined, linesnumbered]{algorithm2e}
 \usepackage{placeins}
 \usepackage{caption}
-\usepackage{subcaption}
+\usepackage[position=top]{subcaption}
 \usepackage{pgfplots}
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
@@ -200,6 +200,7 @@ The remainder of this paper explains this process in detail. \cref{sec:prelim} c
 \section{Preliminaries}
 \label{sec:prelim}
 This section outlines the background 
+\td{Write overview}
 
 
 \subsection{Iterated Local Search}
@@ -280,7 +281,7 @@ Since this requires many shortest path computations, the VVA algorithm assumes t
 \KwRet{false}\;
 \end{algorithm} 
 
-Using this DFS algorithm as the local search heuristic \citeauthor{verbeeck2014extension}, apply the ILS framework to create a bike route planning algorithm. Algorithm \ref{alg:ils-ver} first generates an initial route using the DFS heuristic and stores the path in the variable $route$ (Line \ref{alg:ilsv:init}). The ILS perturbs the solution by removing a road from the solution and invoking the DFS procedure to find a new solution (Lines \ref{alg:ilsv:perturb}-\ref{alg:ilsv:improve}). In the perturbation phase, the algorithm removes $R$ consecutive arcs starting at the arc at position $A$ in solution $route$. If a new path is found after removing a path segment from the solution, then the new path is merged into the current solution (Line \ref{alg:ilsv:merge}). If no new path can be found, then there is no improvement so $A$ and $R$ are both incremented by 1 (Line \ref{alg:ilsv:increment}).
+Using this DFS algorithm as the local search heuristic \citeauthor{verbeeck2014extension}, apply the ILS framework to create a bike route planning algorithm. Algorithm \ref{alg:ils-ver} first generates an initial route using the DFS heuristic and stores the path in the variable $route$ (Line \ref{alg:ilsv:init}). The ILS perturbs the solution by removing a road from the solution and invoking the DFS procedure to find a new solution (Lines \ref{alg:ilsv:perturb}-\ref{alg:ilsv:improve}). In the perturbation phase, the algorithm removes $R$ consecutive arcs starting at the arc at position $A$ in solution $route$. If a new path is found after removing a path segment from the solution, then the new path is merged into the current solution (Line \ref{alg:ilsv:merge}). If no new path with score improvement can be found $A$ and $R$ are both incremented by 1 (Line \ref{alg:ilsv:increment}). This perturbs the solution more and more in an attempt to move the search out of a local optima.
 
 %
 % VVA ILS Algorithm
@@ -326,25 +327,25 @@ Using this DFS algorithm as the local search heuristic \citeauthor{verbeeck2014e
     \KwRet{route}        
 \end{algorithm}
 
-%\td{Move this to evaluation?}
-The main drawback of the VVA algorithm is that the ILS has slow iteration because it is performing DFS on every iteration.  Moreover, it requires many shortest paths to be precomputed before the algorithm can run. This can be infeasible on large real-world  mapping datasets. Since the algorithm assumes all pairs shortest-path pre-computated, the feasibility checking used by the search is $O(degree^{maxDepth})$ where $degree$ is the average degree of nodes in the road network and $maxDepth$ is the maximum depth allowed in the DFS.
+The main drawback of the VVA algorithm is that the ILS has slow iteration because it is performing DFS on every iteration.  Moreover, it requires many shortest paths to be precomputed before the algorithm can run. This can be infeasible on large real-world  mapping datasets. Since the algorithm assumes all pairs shortest-path pre-computated, the feasibility checking used by the search is $O(degree^{maxDepth})$ where $degree$ is the average degree of nodes in the road network and $maxDepth$ is the maximum depth allowed in the DFS. However, since the DFS returns when it finds any better path not the best one, this worst case performance is not typically expected.
 
 \subsection{LS Algorithm}
-At a high level, the ILS algorithm proposed by \citeauthor{lu2015arc} restricts the search space by using spatial indices to prune arcs from the search. Instead of relying on pre-computed shortest paths, the LS algorithm uses online shortest path computations but does less feasibility checking due to the spatial restrictions (See Section \ref{sec:pruning} for more information).
+\label{sec:ls-algo}
+The ILS algorithm proposed by \citeauthor{lu2015arc} aims to solve many of the problems of VVA including slow iteration and large pre-computation. Instead of relying on pre-computed shortest paths, the LS algorithm uses online shortest path computations but does less feasibility checking by reducing the search space with spatial techniques (See \cref{sec:pruning}). In addition, LS uses a greedy path generation algorithm instead of DFS.
 
 \subsubsection{Attractive Arcs}
-\citeauthor{lu2015arc} define a solution route in terms of ``attractive arcs" which are arcs with a positive score (i.e. $arc.score > 0$). A path from node $v_1$ to $v_2$ is a series of attractive arcs $(a_1, a_2, \ldots, a_n)$ which starts with $a_1$, ends with $a_n$ and is denoted by, $(v_1 \spa a_1 \spa a_2 \spa \ldots \spa a_n \spa v_2)$. The symbol $\spa$ denotes the shortest path in the graph between two nodes or arcs. The path between two adjacent attractive arcs ($a_i \spa  a_{i+1}$) is known as the ``blank path segment" and is the shortest path from the end vertex of $a_i$ to the start vertex of $a_{i+1}$. These vertices are respectively denoted $l_i.start$ and $l_i.end$ where $l_i$ is the shortest path. Given an attractive arc $a_i$ from a solution path, $a_i.pre$ refers to the previous attractive arc ($a_{i-1}$) and $a_i.post$ refers to the next attractive arc in the path ($a_{i+1}$). The total cost of a path is the sum of all costs of all the arcs in the path, including the arcs in the blank path segments. The score of a path is defined similarly. To build a solution, the LS algorithm connects many attractive arcs together using shortest path blank path segments.
+LS models a solution route in terms of ``attractive arcs" which are arcs with a positive score. A path from node $v_1$ to $v_2$ is a series of attractive arcs which starts with $a_1$, ends with $a_n$ and is denoted by, $(v_1 \spa a_1 \spa a_2 \spa \ldots \spa a_n \spa v_2)$. The symbol $\spa$ denotes the shortest path in the graph between two nodes or arcs. The path between two adjacent attractive arcs ($a_i \spa  a_{i+1}$) is known as a ``blank path segment" and is the shortest path from the end vertex of $a_i$ to the start vertex of $a_{i+1}$. These vertices are respectively denoted $l_i.start$ and $l_i.end$ where $l_i$ is the shortest path. Given an attractive arc $a_i$ from a solution path, $a_i.pre$ refers to the previous attractive arc ($a_{i-1}$) and $a_i.post$ refers to the next attractive arc in the path ($a_{i+1}$). The total cost of a path is the sum of all costs of all the arcs in the path, including the arcs in the blank path segments. The score of a path is defined similarly. To build a solution, the LS algorithm connects many attractive arcs together using shortest path blank path segments.
 
 \subsubsection{Candidate Arc Set}
-Every arc $a$ in the solution $S$ is associated with a set of candidate attractive arcs. 
+Every arc $a$ in the solution $S$ is associated with a set of candidate attractive arcs. Arcs are taken out of these sets in order to generate a path between two vertices.
 %
 % Definition of Candidate Arc Set
 %
 \begin{definition}[\cite{lu2015arc}]
-    Let $a \in S$ be an arc in the solution $S$ whose distance budget is $B$. Then the Candidate Arc Set (CAS) of $a$, denoted by $a.CAS$ is the set of arcs who have a positive score and can feasibly update (replace) $a$ in $S$, i.e. $\forall a_c \in a.CAS, a_c.score > 0$ and $(a.pre \spa a_c \spa a.post).cost < B - S.cost + (a.pre \spa a \spa a.post)$.
+    Let $a \in S$ be an arc in the solution $S$ whose distance budget is $B$. Then the Candidate Arc Set (CAS) of $a$, denoted by $a.CAS$ is the set of arcs who have a positive score and can feasibly replace $a$ in $S$, i.e. $\forall a_c \in a.CAS, a_c.score > 0$ and $(a.pre \spa a_c \spa a.post).cost < B - S.cost + (a.pre \spa a \spa a.post)$.
 \end{definition}
 
-\citeauthor{lu2015arc} show that candidate arc sets have the following inherit property. This allows the search space to be reduced when computing some CASs since the parent CAS can be restricted.
+\citeauthor{lu2015arc} show that candidate arc sets have the following inherited property. This allows the search space to be reduced when computing some CASs since the parent CAS can be restricted.
 \begin{lemma}[\cite{lu2015arc}] Let $a$ be an arc. Given $a.CAS$, $\forall a_c \in a.CAS, a_c.CAS \sse a.CAS$.
 \end{lemma}
 
@@ -400,99 +401,15 @@ Algorithm \ref{alg:ils-lu-compcas} performs the feasibility checking to generate
 
 Algorithm \ref{alg:ils-lu-updatecas}'s job is to update the CAS for a particular arc $a$. If arcs are added to the current solution, then its distance changes as well as the remaining budget. For the new arcs added, computing the respective CASs using Algorithm \ref{alg:ils-lu-compcas} suffices. However, the previous arcs in the solution need to have their CASs changed since the remaining distance (budget) is now different. Algorithm \ref{alg:ils-lu-updatecas} takes in two budget values, $newDist$ and $oldDist$. If the new budget is smaller than the old budget, there may be some arcs in our CAS whose paths are too long for the new budget. Therefore, the algorithm employs CAS inheritance and restricts the current CAS by removing the arcs which can no longer be feasibly inserted with the new budget (Lines \ref{alg:ils-lu-updatecas-less}-\ref{alg:ils-lu-updatecas-lessend}). If the new budget is larger than our old budget, then the algorithm must expand the CAS by checking the feasibility of all arcs in the graph (Lines \ref{alg:ils-lu-updatecas-more}-\ref{alg:ils-lu-updatecas-moreend}).
 
-
-\subsubsection{Path Generation}
-Algorithm \ref{alg:ils-lu-genpath} is the local search heuristic used by the LS algorithm (Algorithm \ref{alg:ils-lu}). Its goal is to produce a path which connects the start vertex $s$ with the destination vertex $d$ whose total cost is within the budget $dist$ and total score is greater than $minProfit$. The algorithm builds the path by choosing candidate arcs from the CAS $A$.
-
-Algorithm \ref{alg:ils-lu-genpath} first instantiates a fake arc starting and ending at the specified endpoints with a cost and score of 0 (Line \ref{alg:ils-lu-genpath-fake}). This fake arc is used to instantiate the solution to return, $route$ (Line \ref{alg:ils-lu-genpath-init}). It then obtains a set of arcs to insert by filtering the CAS $A$ by choosing arcs whose quality ratio is higher than the average (Line \ref{alg:ils-lu-genpath-arcs}). While there are still possible arcs left to insert and the path has budget left, arcs are continuously removed from the CAS and inserted into the current solution $route$ (Lines \ref{alg:ils-lu-genpath-while}-\ref{alg:ils-lu-genpath-endwhile}). The algorithm inserts these candidate arcs into the path using a greedy approach. It chooses the closest blank path segment in the solution to insert the arc into the path (Lines \ref{alg:ils-lu-genpath-blank}-\ref{alg:ils-lu-genpath-blankend}).
+\td{Move the CAS to the appendix??}
 
 
-%
-% Generate Path algorithm
-%
-\begin{algorithm}
-    \caption{generatePath($s$, $d$, $dist$, $minProfit$, $A$) \label{alg:ils-lu-genpath}}
-    \KwData{$s$: a start node of the path, $d$: the end node of the path, $dist$: the path's budget, $minProfit$: minimum score of the path, $A$: candidate arc set to choose arcs from.}
-    \KwResult{a path which fits the specified criteria.} 
-    
-    $a_f \gets (s, d, 0, 0)$ \tcp*[h]{Arc with endpoints s \& d with cost \& score of 0}\label{alg:ils-lu-genpath-fake}\;
-    $route \gets \set{a_f}$\label{alg:ils-lu-genpath-init}\;
-    
-    $arcs \gets$ all arcs from $A$ whose quality ratio is above the average \label{alg:ils-lu-genpath-arcs}\;
-    \While {$arcs$ is not empty and $route.cost < dist$}{ \label{alg:ils-lu-genpath-while}
-        $e \gets$ remove random arc from $arcs$\; 
-        $l \gets$ null blank path segment \label{alg:ils-lu-genpath-blank}\;
-        $minDist \gets 0$\;
-        
-        \For{$l_i \in$ blank path segments of $route$}{
-            $dist \gets (l_i.start \spa e \spa l_i.end).cost$\;
-            \If{$dist < minDist$}{
-                $l \gets l_i$\;
-                $minDist \gets dist$ \label{alg:ils-lu-genpath-blankend}\;
-            
-            }
-        }
-        
-        $path \gets (l.start \spa e \spa l.end)$
-        
-        \If(\tcp*[h]{Our path can feasibly replace $l$}){$path.cost \leq dist - route.cost + l.cost$}{
-            insert $path$ into $route$ at blank path segment $l$\label{alg:ils-lu-genpath-endwhile}\;
-        }
-    }
-    
-    \If{$route.score > minProfit$}{
-        \KwRet{route}\;
-    } \Else {
-        \KwRet{empty route}\;
-    }       
-\end{algorithm}
+\subsubsection{ILS Formulation}
+The local search method used by LS is a greedy algorithm. It continuously inserts feasible arcs from a CAS at the closest blank path segment until the budget is exhausted or there are no more CAS arcs. The LS ILS algorithm removes a random arc from the solution using the heuristic scoring metric ``Improve Potential" and uses the greedy local search to fill the gap in the path. If a new path is found, it is inserted into the route and the CAS of each arc is computed or updated accordingly. See \cref{sec:ls-appendix-path} for details on this path generation algorithm and how it is used in the ILS. 
 
-
-Using the previously defined sub-procedures, \citeauthor{lu2015arc} define Algorithm \ref{alg:ils-lu}, an ILS algorithm for generating a bike route. First, the algorithm checks to see if the shortest path from the start to the destination is within the budget and if so then it runs the ILS. If not, it returns an empty solution (Lines \ref{alg:ils-lu-spcheck}-\ref{alg:ils-lu-spcheck2}). The ILS first initializes a fake arc with endpoints $s$ \& $d$ and a cost of $dist$ and a score of 0 (Line \ref{alg:ils-lu-fake}) then computes the CAS of this arc (Line \ref{alg:ils-lu-fakecas}). This arc is used to initialize the temporary solution (Line \ref{alg:ils-lu-init}).
-
-While the time limit $t$ has not elapsed, the algorithm chooses arcs from the solution to be removed based on their improve potential, removes them from the solution, then uses $generatePath$ to find a new path which closes the gap (Lines \ref{alg:ils-lu-while}-\ref{alg:ils-lu-ilsgenpath}). If $generatePath$ can find a path to close the gap, then it needs to update the CAS of all the arcs in the solution. For the new arcs from $generatePath$ being added to the solution, the candidate arc sets must be computed (Line \ref{alg:ils-lu-ilscompcas}). On the other hand, arcs already in the solution must have their CASs updated (Line \ref{alg:ils-lu-ilsupdatecas}) since the remaining budget will have changed by adding the new path segment. 
-
-%
-% Lu-Shahabi ILS algorithm
-%
-\begin{algorithm}
-    \caption{ILS-LS($t$, $s$, $d$, $dist$, $G$) \label{alg:ils-lu}}
-    \KwData{$t$: a time, $s$: the start node of the path, $d$: the end node of the path, $dist$: the maximum cost of the route, $G$: the graph of the road network.}
-    \KwResult{a path}
-    
-    \If{$(s \spa d).cost > dist$}{\label{alg:ils-lu-spcheck}
-        \KwRet{empty route} \label{alg:ils-lu-spcheck2}
-    } \Else {
-    
-        $a_f \gets (s,d, dist, 0)$ \tcp*[h] Arc with endpoints s \& d with cost $dist$ and score 0 \label{alg:ils-lu-fake}\;
-        $a_f.CAS \gets computeCAS(G, \set{}, s, d, dist)$ \label{alg:ils-lu-fakecas}\;
-        $solution \gets \set{a_f}$ \label{alg:ils-lu-init}\;
-        
-        
-        \While{$t$ seconds have not elapsed}{\label{alg:ils-lu-while}
-            $arcs \gets$ all arcs from $solution$ whose improve potential is above the average\;
-            $e \gets$ remove a random arc from $arcs$\;
-            $b_1 \gets solution.cost + e.cost$ \tcp*[h]{Budget after removing e from solution}\;
-            $path \gets generatePath(e.pre, e.post, b_1, e.score, e.CAS)$\label{alg:ils-lu-ilsgenpath}\;
-            \If{$path$ is not empty}{
-                remove $e$ from $solution$\;
-                insert $path$ into $solution$ between $e.pre$ and $e.post$\;
-                \For{$a \in route$}{
-                    $b_2 \gets solution.cost + a.cost$ \tcp*[h]{Budget after removing a from solution}\;
-                    \If{$a \in path$ or $a = e.pre$ or $a = e.post$}{
-                        $a.CAS = computeCAS(G, a.CAS, a.pre, a.post, b_2)$\label{alg:ils-lu-ilscompcas}\;
-                    } \Else {
-                        $a.CAS = updateCAS(G, a.CAS, a.pre, a.post, b_1, b_2)$\label{alg:ils-lu-ilsupdatecas}\;
-                    }
-                }
-            }
-        }
-        \KwRet{route}\;
-    }
-\end{algorithm}
 
 \subsubsection{Spatial Pruning Techniques}\label{sec:pruning}
-While Algorithm \ref{alg:ils-lu} relies on the ``CAS inherit" property to restrict the search space, it still has to do a lot of processing to generate the initial CAS or update CASs when the budget expands. For example, Line \ref{alg:ils-lu-fakecas} computes the CAS of the inital fake arc which requires checking the feasibility of every arc in the road network. Clearly, this is a large search space. In order to address this issue,  \citeauthor{lu2015arc} propose an ``ellipse pruning" technique to reduce the number of arcs which need to be checked.
+While LS relies on the ``CAS inherit" property to restrict the search space, it still has to do a lot of processing to generate the initial CAS or update CASs when the budget expands. To address this issue,  \citeauthor{lu2015arc} propose an ``ellipse pruning" technique to reduce the number of arcs which need to be checked.
 
 
 An ellipse is a curve such that for every point on the curve, the sum of the distances to the two focal points is constant. Consider the scenario where there are two graph nodes $v_1$ and $v_2$ in which the desired path between the two has a budget of $b$. Furthermore, consider the ellipse whose focal points are the two nodes and whose sum of the distances to the two focal points is $b$ (Figure \ref{fig:ellipse}). For all points $p$ on the ellipse $(v_1 \spa p \spa v_2).cost = b$ where the shortest path is the straight line Euclidean distance. Therefore, if there is an arc $a$ which connects $v_1$ to $v_2$ and contains a point $p_o$ outside of the ellipse, we know that $a.cost > b$ since $(v_1 \spa p_o \spa v_2).cost > b$. This criteria is used to prune arcs from the search space when calculating or updating CASs.
@@ -852,8 +769,102 @@ I would like to thank David Frey of the Union College Computer Science Departmen
 
 \begin{appendices}
 
-\section{LS Algorithm Details}
-\td{WRITE ME}
+\section{LS Algorithm}
+This appendix discusses the details of the LS algorithm not covered in \cref{sec:ls-algo}. \cref{sec:ls-appendix-path} explains the path generation algorithm and how it in the LS ILS algorithm. \cref{sec:ls-appendix-heuristics} explains the heuristic metrics used to determine which arcs should be added and removed when performing the ILS.
+\subsection{Path Generation}
+\label{sec:ls-appendix-path}
+\cref{alg:ils-lu-genpath} is the local search heuristic used by the LS algorithm (Algorithm \ref{alg:ils-lu}). Its goal is to produce a path which connects the start vertex $s$ with the destination vertex $d$ whose total cost is within the budget $dist$ and total score is greater than $minProfit$. The algorithm builds the path by choosing candidate arcs from the CAS $A$.
+
+\cref{alg:ils-lu-genpath} first instantiates a fake arc starting and ending at the specified endpoints with a cost and score of 0 (Line \ref{alg:ils-lu-genpath-fake}). This fake arc is used to instantiate the solution to return, $route$ (Line \ref{alg:ils-lu-genpath-init}). It then obtains a set of arcs to insert by filtering the CAS $A$ by choosing arcs whose quality ratio is higher than the average (Line \ref{alg:ils-lu-genpath-arcs}). While there are still possible arcs left to insert and the path has budget left, arcs are continuously removed from the CAS and inserted into the current solution $route$ (Lines \ref{alg:ils-lu-genpath-while}-\ref{alg:ils-lu-genpath-endwhile}). The algorithm inserts these candidate arcs into the path using a greedy approach. It chooses the closest blank path segment in the solution to insert the arc into the path (Lines \ref{alg:ils-lu-genpath-blank}-\ref{alg:ils-lu-genpath-blankend}).
+
+
+%
+% Generate Path algorithm
+%
+\begin{algorithm}
+    \caption{generatePath($s$, $d$, $dist$, $minProfit$, $A$) \label{alg:ils-lu-genpath}}
+    \KwData{$s$: a start node of the path, $d$: the end node of the path, $dist$: the path's budget, $minProfit$: minimum score of the path, $A$: candidate arc set to choose arcs from.}
+    \KwResult{a path which fits the specified criteria.} 
+    
+    $a_f \gets (s, d, 0, 0)$ \tcp*[h]{Arc with endpoints s \& d with cost \& score of 0}\label{alg:ils-lu-genpath-fake}\;
+    $route \gets \set{a_f}$\label{alg:ils-lu-genpath-init}\;
+    
+    $arcs \gets$ all arcs from $A$ whose quality ratio is above the average \label{alg:ils-lu-genpath-arcs}\;
+    \While {$arcs$ is not empty and $route.cost < dist$}{ \label{alg:ils-lu-genpath-while}
+        $e \gets$ remove random arc from $arcs$\; 
+        $l \gets$ null blank path segment \label{alg:ils-lu-genpath-blank}\;
+        $minDist \gets 0$\;
+        
+        \For{$l_i \in$ blank path segments of $route$}{
+            $dist \gets (l_i.start \spa e \spa l_i.end).cost$\;
+            \If{$dist < minDist$}{
+                $l \gets l_i$\;
+                $minDist \gets dist$ \label{alg:ils-lu-genpath-blankend}\;
+            
+            }
+        }
+        
+        $path \gets (l.start \spa e \spa l.end)$
+        
+        \If(\tcp*[h]{Our path can feasibly replace $l$}){$path.cost \leq dist - route.cost + l.cost$}{
+            insert $path$ into $route$ at blank path segment $l$\label{alg:ils-lu-genpath-endwhile}\;
+        }
+    }
+    
+    \If{$route.score > minProfit$}{
+        \KwRet{route}\;
+    } \Else {
+        \KwRet{empty route}\;
+    }       
+\end{algorithm}
+
+
+\cref{alg:ils-lu} uses the ILS framework and generates the final bike route. First, the algorithm checks to see if the shortest path from the start to the destination is within the budget and if so then it runs the ILS. If not, it returns an empty solution (Lines \ref{alg:ils-lu-spcheck}-\ref{alg:ils-lu-spcheck2}). The ILS first initializes a fake arc with endpoints $s$ \& $d$ and a cost of $dist$ and a score of 0 (Line \ref{alg:ils-lu-fake}) then computes the CAS of this arc (Line \ref{alg:ils-lu-fakecas}). This arc is used to initialize the temporary solution (Line \ref{alg:ils-lu-init}).
+
+While the time limit $t$ has not elapsed, the algorithm chooses arcs from the solution to be removed based on their improve potential, removes them from the solution, then uses $generatePath$ to find a new path which closes the gap (Lines \ref{alg:ils-lu-while}-\ref{alg:ils-lu-ilsgenpath}). If $generatePath$ can find a path to close the gap, then it needs to update the CAS of all the arcs in the solution. For the new arcs from $generatePath$ being added to the solution, the candidate arc sets must be computed (Line \ref{alg:ils-lu-ilscompcas}). On the other hand, arcs already in the solution must have their CASs updated (Line \ref{alg:ils-lu-ilsupdatecas}) since the remaining budget will have changed by adding the new path segment. 
+
+%
+% Lu-Shahabi ILS algorithm
+%
+\begin{algorithm}
+    \caption{ILS-LS($t$, $s$, $d$, $dist$, $G$) \label{alg:ils-lu}}
+    \KwData{$t$: a time, $s$: the start node of the path, $d$: the end node of the path, $dist$: the maximum cost of the route, $G$: the graph of the road network.}
+    \KwResult{a path}
+    
+    \If{$(s \spa d).cost > dist$}{\label{alg:ils-lu-spcheck}
+        \KwRet{empty route} \label{alg:ils-lu-spcheck2}
+    } \Else {
+    
+        $a_f \gets (s,d, dist, 0)$ \tcp*[h] Arc with endpoints s \& d with cost $dist$ and score 0 \label{alg:ils-lu-fake}\;
+        $a_f.CAS \gets computeCAS(G, \set{}, s, d, dist)$ \label{alg:ils-lu-fakecas}\;
+        $solution \gets \set{a_f}$ \label{alg:ils-lu-init}\;
+        
+        
+        \While{$t$ seconds have not elapsed}{\label{alg:ils-lu-while}
+            $arcs \gets$ all arcs from $solution$ whose improve potential is above the average\;
+            $e \gets$ remove a random arc from $arcs$\;
+            $b_1 \gets solution.cost + e.cost$ \tcp*[h]{Budget after removing e from solution}\;
+            $path \gets generatePath(e.pre, e.post, b_1, e.score, e.CAS)$\label{alg:ils-lu-ilsgenpath}\;
+            \If{$path$ is not empty}{
+                remove $e$ from $solution$\;
+                insert $path$ into $solution$ between $e.pre$ and $e.post$\;
+                \For{$a \in route$}{
+                    $b_2 \gets solution.cost + a.cost$ \tcp*[h]{Budget after removing a from solution}\;
+                    \If{$a \in path$ or $a = e.pre$ or $a = e.post$}{
+                        $a.CAS = computeCAS(G, a.CAS, a.pre, a.post, b_2)$\label{alg:ils-lu-ilscompcas}\;
+                    } \Else {
+                        $a.CAS = updateCAS(G, a.CAS, a.pre, a.post, b_1, b_2)$\label{alg:ils-lu-ilsupdatecas}\;
+                    }
+                }
+            }
+        }
+        \KwRet{route}\;
+    }
+\end{algorithm}
+
+\subsection{Arc Choice Heuristics}
+\label{sec:ls-appendix-heuristics}
+\td{Write me}
 
 \section{ILS Implementation Code}
 \td{WRITE ME}
