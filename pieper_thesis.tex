@@ -199,9 +199,7 @@ The remainder of this paper explains this process in detail. \cref{sec:prelim} c
 
 \section{Preliminaries}
 \label{sec:prelim}
-This section outlines the background 
-\td{Write overview}
-
+ILS is a heuristic method for solving many discrete optimization problems. First, we explain the abstract idea of ILS. Then we explain how ILS is used in both the VVA and LS algorithms. The VVA algorithm uses a simple depth-first-search with additional checking. The LS algorithms uses a greedy search with spatial techniques to reduce the search space.
 
 \subsection{Iterated Local Search}
 Iterated Local Search (ILS) is a framework for solving optimization problems using heuristic search algorithms. A heuristic is a technique used to solve a problem quickly when exact or approximation methods are too slow. Heuristic algorithms can be thought of as ``shortcuts" in that they trade optimality and completeness for speed. Heuristics are often used in search algorithms to  determine which branch of the search to take but are not guaranteed to produce the best solution. A heuristic algorithm is commonly referred to as a heuristic.
@@ -236,7 +234,7 @@ Despite its simplicity, ILS can be challenging to implement efficiently because 
 
 \subsection{VVA Algorithm}
 %\td{The graph $G$ is never passed in anywhere in the pseudocode??}
-The local search algorithm proposed by \citeauthor{verbeeck2014extension} is a modified version of Depth First Search (Algorithm \ref{alg:dfs}). It is implemented as a recursive function which used to to find a path between two disconnected nodes in the bike route. The algorithm is allowed to ``take" an outgoing edge and add it to the current route as long as it has not been traversed before and the shortest path from the end of the traversed arc to the destination is less than the remaining distance budget after taking the arc (Line \ref{alg:dfs:feasability}). In other words, it must be \emph{feasible} to get from the end of the chosen arc to the desired destination after traversing the arc. 
+The local search algorithm proposed by \citeauthor{verbeeck2014extension} is a modified version of depth-first-search (Algorithm \ref{alg:dfs}). It is implemented as a recursive function which used to to find a path between two disconnected nodes in the bike route. The algorithm is allowed to ``take" an outgoing edge and add it to the current route as long as it has not been traversed before and the shortest path from the end of the traversed arc to the destination is less than the remaining distance budget after taking the arc (Line \ref{alg:dfs:feasability}). In other words, it must be \emph{feasible} to get from the end of the chosen arc to the desired destination after traversing the arc. 
 
 \begin{figure}
 \begin{center}
@@ -792,7 +790,7 @@ This appendix discusses the details of the LS algorithm not covered in \cref{sec
     $arcs \gets$ all arcs from $A$ whose quality ratio is above the average \label{alg:ils-lu-genpath-arcs}\;
     \While {$arcs$ is not empty and $route.cost < dist$}{ \label{alg:ils-lu-genpath-while}
         $e \gets$ remove random arc from $arcs$\; 
-        $l \gets$ null blank path segment \label{alg:ils-lu-genpath-blank}\;
+        $l \gets$ empty blank path segment \label{alg:ils-lu-genpath-blank}\;
         $minDist \gets 0$\;
         
         \For{$l_i \in$ blank path segments of $route$}{
