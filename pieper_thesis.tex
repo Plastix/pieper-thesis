@@ -191,11 +191,7 @@ We implement the VVA and LS algorithms using an open source routing engine named
 
 Our experimental results show that the LS algorithm is faster than the VVA algorithm but not substantially. However, the LS algorithm does produce substantially higher scoring routes than VVA. Our LS variants can produce even higher scoring routes than the baseline LS algorithm but at a cost of time. We are unable to validate the claimed response time of the LS algorithm.
 
-The remainder of this paper explains this process in detail. \cref{sec:prelim} contains background information on ILS, VVA, and LS.
-
-\td{Edit this as I make new sections??}
-
-
+The remainder of this paper explains this research in detail. \cref{sec:prelim} contains background information on ILS, VVA, and LS. Next, \cref{sec:ils-implementation} discusses our data source, the open source software we used, and our implementation of VVA and LS including our LS variants. In \cref{sec:data} we present our experimental data and performance analysis using two different ILS stopping criteria. We also discuss an Integer Programming model for the AOP. Finally, we conclude with a summary of our results and future work.
 
 \section{Preliminaries}
 \label{sec:prelim}
@@ -436,6 +432,7 @@ An ellipse is a curve such that for every point on the curve, the sum of the dis
 
 
 \section{ILS Implementation}
+\label{sec:ils-implementation}
 We implement the VVA and LS algorithms and evaluate them on real world road networks. This section discusses the technical details of our implementation. We first discuss our data source, the open source software used, and road scoring metrics. Then we explain the choices made in both our VVA and LS implementations. Finally this section concludes with observations of our implementations and we propose four new LS variants based on these observations. 
 
 \subsection{OpenStreetMap}
@@ -582,6 +579,7 @@ Second, this blacklisting process does not work well with contraction hierarchie
 
 
 \section{Data}
+\label{sec:data}
 We ran a series of experiments to evaluate the performance of the VVA algorithm, the LS algorithm, and our LS variants. This section discusses our data set, data collection process, and experimental results.
 
 \subsection{Data Set}
