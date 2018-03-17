@@ -343,7 +343,7 @@ Every arc $a$ in the solution $S$ is associated with a set of candidate attracti
 \begin{lemma}[\cite{lu2015arc}] Let $a$ be an arc. Given $a.CAS$, $\forall a_c \in a.CAS, a_c.CAS \sse a.CAS$.
 \end{lemma}
 
-To chose which candidate arcs to add to the solution, \citeauthor{lu2015arc} propose a criterion called ``Quality Ratio" which is defined for an arc from a candidate arc set. The intuition is that arcs with higher value and lower cost will be more likely to improve the solution. In order to determine which arcs to remove from the solution in the ILS perturbation, they propose a criteria called ``Improve Potential". The intuition is that solution arcs with lower scores and more valuable nearby arcs are more likely to improve the solution.
+To chose which candidate arcs to add to the solution, \citeauthor{lu2015arc} propose a criterion called ``Quality Ratio" which is defined for an arc from a candidate arc set. The intuition is that arcs with higher value and lower cost will be more likely to improve the solution. In order to determine which arcs to remove from the solution in the ILS perturbation, they propose a criteria called ``Improve Potential". The intuition is that solution arcs with lower scores and more valuable nearby arcs are more likely to improve the solution. See \cref{sec:ls-appendix-heuristics} for more information.
 
 \cref{alg:ils-lu-compcas} performs the feasibility checking to generate a set of candidate arcs which can be used to connect a start node $v_1$ to a destination node $v_2$. The algorithm takes in a set of possible arcs, iterates over each one, and adds the arc to the current CAS only if its score is positive and the distance of the path from $v_1$ to $a$ to $v_2$ is within the specified budget (\cref{alg:ils-lu-compcas-for}-\cref{alg:ils-lu-compcas-add}). In addition, the Quality Ratio is calculated for the specified arc in the CAS (\cref{alg:ils-lu-compcas-qr}). If the CAS, $A$, passed into the algorithm is non-empty, then it can use the ``CAS inherit" property and filter out arcs whose paths are within the new specified budget. If the CAS passed in is non-empty, then the algorithm will iterate over all arcs in the graph to find the ones which can be feasibly inserted (\cref{alg:ils-lu-compcas-if}-\cref{alg:ils-lu-compcas-ifend}).
 
@@ -395,7 +395,7 @@ To chose which candidate arcs to add to the solution, \citeauthor{lu2015arc} pro
 
 \cref{alg:ils-lu-updatecas}'s job is to update the CAS for a particular arc $a$. If arcs are added to the current solution, then its distance changes as well as the remaining budget. For the new arcs added, computing the respective CASs using \cref{alg:ils-lu-compcas} suffices. However, the previous arcs in the solution need to have their CASs changed since the remaining distance (budget) is now different. \cref{alg:ils-lu-updatecas} takes in two budget values, $newDist$ and $oldDist$. If the new budget is smaller than the old budget, there may be some arcs in our CAS whose paths are too long for the new budget. Therefore, the algorithm employs CAS inheritance and restricts the current CAS by removing the arcs which can no longer be feasibly inserted with the new budget (\cref{alg:ils-lu-updatecas-less}-\cref{alg:ils-lu-updatecas-lessend}). If the new budget is larger than our old budget, then the algorithm must expand the CAS by checking the feasibility of all arcs in the graph (\cref{alg:ils-lu-updatecas-more}-\cref{alg:ils-lu-updatecas-moreend}).
 
-\td{Move the CAS to the appendix??}
+%\td{Move the CAS to the appendix??}
 
 
 \subsubsection{ILS Formulation}
@@ -884,7 +884,36 @@ While the time limit $t$ has not elapsed, the algorithm chooses arcs from the so
 
 \subsection{Arc Choice Heuristics}
 \label{sec:ls-appendix-heuristics}
-\td{Write me}
+These heuristic scoring metrics are used by the LS algorithm to guide the perturbation and path generation phases of the ILS. Quality Ratio is defined for an arc from a CAS of a ILS solution. It is used to determine which arcs from the CAS will be chosen to add to the route to better improve its score. Improve Potential is used to determine which arcs to remove from the current solution so that new paths are more likely to improve the score of the route.
+
+%
+% Quality Ratio algorithm
+%
+\begin{algorithm}[!h]
+    \caption{QualityRatio($a.pre$, $a.post$, $a_c$) \label{alg:ils-lu-qr}}
+    \KwData{$a_c$: arc from candidate arc set, $a.pre$: previous arc in solution, $a.post$: next arc in solution.}
+    \KwResult{a number.}
+    $score \gets (a.pre \spa a_c \spa a.post).score$\;
+    $cost \gets (a.pre \spa a_c \spa a.post).cost$\;
+    \KwRet{$score / cost$}        
+\end{algorithm}
+
+%
+% Improve Potential algorithm
+%
+\begin{algorithm}[!h]
+    \caption{ImprovePotential($a$) \label{alg:ils-lu-ip}}
+    \KwData{$a$: a solution arc}
+    \KwResult{a number.}
+    $score \gets 0$\;
+    $maxDist \gets 0$\;
+    $dist \gets (a.pre \spa a \spa a.post).cost$\;
+    \For{$e \in a.CAS$}{
+        $score \gets score + (e.score - a.score)$\;
+        $maxDist \gets max(maxDist, (a.pre \spa e \spa a.post).cost)$\;
+    }
+    \KwRet{$score / (maxDist - dist)$}       
+\end{algorithm}
 
 \section{ILS Implementation Code}
 This appendix contains Java code of our GraphHopper implementation.
