@@ -439,7 +439,7 @@ An ellipse is a curve such that for every point on the curve, the sum of the dis
 \draw[line width=0.5mm] (1.5, 0) ellipse (4.5 cm and 1.5cm) node [below=15pt] {$Ellipse(v_1, v_2, b)$};
 \end{tikzpicture}
 \end{center}
-\caption{Illustration of \citeauthor{lu2015arc}'s ellipse pruning technique. The goal is to connect $v_1$ to $v_2$ with a path of budget $b$. The arc $a$ is excluded from the search since it contains a point outside of the ellipse and is therefore infeasible. \cite{lu2015arc}.}
+\caption[Ellipse pruning technique]{Illustration of \citeauthor{lu2015arc}'s ellipse pruning technique. The goal is to connect $v_1$ to $v_2$ with a path of budget $b$. The arc $a$ is excluded from the search since it contains a point outside of the ellipse and is therefore infeasible. \cite{lu2015arc}.}
 \label{fig:ellipse}
 \end{figure}
 
@@ -450,7 +450,7 @@ An ellipse is a curve such that for every point on the curve, the sum of the dis
 We implement the VVA and LS algorithms and evaluate them on real world road networks. This section discusses the technical details of our implementation. We first discuss our data source, the open source software used, and road scoring metrics. Then we explain the choices made in both our VVA and LS implementations. Finally this section concludes with observations of our implementations and we propose four new LS variants based on these observations. 
 
 \subsection{OpenStreetMap}
-We use the crowd-sourced open mapping dataset provided by the \emph{OpenStreetMap} (OSM) foundation\footnote{OSM provides a free mapping dataset for the entire planet. A full world map is around 56GB.}\cite{osm}. However, the OSM map format is an XML-based schema which is not trivially translatable into a road network graph. Luckily, in addition to open data, OSM includes a collection of open source software which interface with the data. Because the goal of this research is not to translate raw OSM data into a usable graph representation, we need software that already has this parsing capability in order to implement both ILS algorithms. Because OSM is a crowdsourced dataset, its level of accuracy varies across the world which is the main drawback to using this data. 
+We use the crowd-sourced open mapping dataset provided by the \emph{OpenStreetMap} (OSM) foundation\footnote{OSM provides a free mapping dataset for the entire planet. A full world map is around 56GB.}\cite{osm}. However, the OSM map format is an XML-based schema which is not trivially translatable into a road network graph. Luckily, in addition to open data, OSM includes a collection of open source software which interface with the data. Because the goal of this research is not to translate raw OSM data into a usable graph representation, we used software that already has this parsing capability in order to implement both ILS algorithms. Because OSM is a crowdsourced dataset, its level of accuracy varies across the world which is the main drawback to using this data. 
 
 \subsubsection{Map Metadata}
 Some OSM roads (known as ``ways" in OSM parlance) contain metadata used to help bicycle routing but it is not guaranteed to be available. This bicycle routing hint is a value which is used to express the desirability of a road (\cref{tab:osm-hint}).  
@@ -476,7 +476,7 @@ Some OSM roads (known as ``ways" in OSM parlance) contain metadata used to help 
         \hline
     \end{tabular}
 \end{center}
-\caption{OSM bicycle routing hints. Taken directly from the OSM wiki.}
+\caption[Bicycle routing hints]{OSM bicycle routing hints. Taken directly from the OSM wiki \cite{osm}.}
 \label{tab:osm-hint}
 \end{table}
 However, the OSM wiki notes that these values ``should not be used where other attributes\footnote{Example attributes include number of lanes, maximum speed, and incline.} are considered adequate description" \cite{osm}.
@@ -489,28 +489,28 @@ We use GraphHopper as the starting point for our research. GraphHopper is an ope
     \begin{center}
         \includegraphics[width=\textwidth]{figs/graphhopper}
     \end{center}
-    \caption{GraphHopper web frontend. This is OpenStreetMap data overlaid with the shortest path from Union College to Saratoga Springs.}
+    \caption[GraphHopper web frontend]{GraphHopper web frontend. This is OpenStreetMap data overlaid with the shortest path from Union College to Saratoga Springs.}
     \label{tab:graphhopper-frontend}
 \end{figure}
 
-Additionally, GraphHopper supports multiple ``routing profiles" which modify the weights of roads based on a particular vehicle. This is used to give preference to certain roads that are more suited for a particular vehicle. GraphHopper's default bike routing profile contains code for giving the normalized ``priority" value of a road. A normalized priority value is one of the 7 values contained in \cref{tab:osm-hint} normalized to a 0 to 1 scale with 1 being more preferable. When determining the priority of a road, this routing profile also considers other road metadata such as road speed and road surface. We use this normalized priority value calculated by GraphHopper as our road scoring mechanism. A road's cost is simply its distance in meters.
+Additionally, GraphHopper supports multiple ``routing profiles" which modify the weights of roads based on a particular vehicle. This is used to give preference to certain roads that are more suited for a particular vehicle. GraphHopper's default bike routing profile contains code for giving the normalized ``priority" value of a road. A normalized priority value is one of the 7 values contained in \cref{tab:osm-hint} normalized to a 0 to 1 scale with 1 being more preferable. When determining the priority of a road, this routing profile also considers other road metadata such as road speed and road surface. GraphHopper will use the other metadata if bicycle specific routing hints are not available. We use this normalized priority value calculated by GraphHopper as our road scoring mechanism. A road's cost is simply its distance in meters.
 
 
 \subsubsection{Contraction Hierarchies}
 GraphHopper supports a special type of graph preprocessing called contraction hierarchies \cite{graphhopper}. The goal of contraction hierarchies is to preprocess the graph such that subsequent shortest path queries can be computed more quickly but still provably correct. This is done by ordering nodes by some importance value and then iteratively ``contracting" the least important node. Contracting a node $v$ means replacing shortest paths through $v$ with new shortcut edges \cite{geisberger2008contraction}. A faster shortest path search can be obtained by running a bidirectional shortest-path search making sure that the forward direction only traverses edges going to more important nodes and the backward direction only traverses edges coming from more important nodes.
 
-When running the GraphHopper server for the first time, the engine processes the raw OSM data into a graph and builds contraction hierarchies for each of the enabled routing profiles. This contraction step may take many minutes depending on the size of the graph. We use GraphHopper's built-in contraction hierarchy based shortest path algorithm\footnote{GraphHopper's default algorithm is bidirectional Dijkstra's algorithm.} for calculating shortest paths in both our VVA implementation LS implementation.
+When running the GraphHopper server for the first time, the engine processes the raw OSM data into a graph and builds contraction hierarchies for each of the enabled routing profiles. This contraction step may take many minutes depending on the size of the graph. We use GraphHopper's built-in contraction hierarchy based shortest path algorithm\footnote{GraphHopper's default algorithm is bidirectional Dijkstra's algorithm.} for calculating shortest paths in both our VVA implementation and LS implementation.
 
 \subsection{VVA Implementation}
 Our Java implementation of the VVA algorithm differs very little from the pseudocode provided by \citeauthor{verbeeck2014extension} Our implementation does not have a set of starting locations nor does it retain the four best initial solutions. Rather, the starting location is fixed and only the single highest scoring solution is retained between iterations. These choices both simplify our implementation and make the ILS closer to that of the LS algorithm. Our local search heuristic is still a recursive DFS with a maximum depth parameter that performs arc feasibility checking.
 
-Another difference in our implementation is how we check arc feasibility. Instead of precomputing all-pairs shortest path, we use GraphHopper's built in contraction hierarchies and do an online shortest-path computation. This is slower than assuming all shortest paths have been pre-computed and using a lookup table. However, this requires far less computation before the algorithm runs. In addition, we can leverage GraphHopper's fast and correctly implemented shortest-path algorithms without writing our own pre-processing code. Since we are routing on a contraction hierarchy graph, we need to make sure to ignore the special ``shortcut" edges added in the contraction phase. Our road scoring mechanism is GraphHopper's normalized priority value and road costs are distances in meters.
+Another difference in our implementation is how we check arc feasibility. Instead of pre-computing all-pairs shortest path, we use GraphHopper's built in contraction hierarchies and do an online shortest-path computation. This is slower than assuming all shortest paths have been pre-computed. However, this requires far less computation before our algorithm starts. In addition, we can leverage GraphHopper's fast and correctly implemented shortest-path algorithms without writing our own pre-processing code. Since we are routing on a contraction hierarchy graph, we need to make sure to ignore the special ``shortcut" edges added in the contraction phase. Our road scoring mechanism is GraphHopper's normalized priority value and road costs are distances in meters.
 
 \begin{figure}
     \begin{center}
         \includegraphics[width=\textwidth]{figs/vva-route}
     \end{center}
-    \caption{Example route produced by our implementation of the VVA algorithm.}
+    \caption[VVA example route]{Example route produced by our implementation of the VVA algorithm.}
     \label{fig:vva-example}
 \end{figure}
 
@@ -518,30 +518,32 @@ Another difference in our implementation is how we check arc feasibility. Instea
     \begin{center}
         \includegraphics[width=\textwidth]{figs/vva-route-turn}
     \end{center}
-    \caption{Quick turns in VVA example route. Inset in \cref{fig:vva-example}}
+    \caption[VVA quick turns]{Quick turns in VVA example route. Inset in \cref{fig:vva-example}}
     \label{fig:vva-example-turn}
 \end{figure}
 
 
 \subsection{LS Implementation}
-Compared to the the VVA algorithm, the LS algorithm is more complex so our implementation differs more from the pseudocode provided by \citeauthor{lu2015arc}. There are many more implementation choices to be made. Recall that this algorithm works by connecting together attractive arcs with shortest paths known as ``blank path segments." 
+Compared to the the VVA algorithm, the LS algorithm is more complex and so our implementation differs more from the pseudocode provided by \citeauthor{lu2015arc}. There are many more implementation choices to be made. Recall that this algorithm works by connecting together attractive arcs with shortest paths known as blank path segments. 
 
-Implicitly defined in the LS algorithm is an object which represents the solution built up through iterations. We call this object a ``Route" and provide a unified interface for adding and removing arcs from this path. When adding and removing arcs, internally the object maintains the blank path segment invariant by calculating shortest paths and storing these paths. When it is time to return the actual path to GraphHopper, the Route object simply iterates over stored attractive arcs and shortest paths (blank path segments) in the correct order. Since we are using a contraction hierarchy shortest path algorithm to compute the blank path segments, we recursively ``unpack" any shortcuts (to get the original roads) before returning the solution to GraphHopper. 
+Implicitly defined in the LS algorithm is an object which represents the solution built up through iterations. We call this object a ``route" and provide a unified interface for adding and removing arcs from this path. When adding and removing arcs, internally the object maintains the blank path segment invariant by calculating shortest paths and storing these paths. When it is time to return the actual path to GraphHopper, the Route object simply iterates over stored attractive arcs and shortest paths (blank path segments) in order. Since we are using a contraction hierarchy shortest path algorithm to compute the blank path segments, we recursively ``unpack" any shortcuts (to get the original roads) before returning the solution to GraphHopper. 
 
-Our Candidate Arc Set (CAS) computation also differs in the way we spatially fetch arcs. We do not use a grid index and fetch all arcs whose grids overlap with the pruning ellipse.  Instead, we perform a breath first search starting at our start node only continuing our search outward if a given road is inside of our pruning ellipse. When the search returns, we have a list of all arcs that are contained solely inside of the pruning ellipse. We compute CAS feasibility of these arcs using the same contraction hierarchy shortest path algorithm used to calculate blank path segments. Our scores and costs are identical to those used in our VVA implementation.
+Our Candidate Arc Set (CAS) computation also differs in the way we spatially fetch arcs. We perform a breath first search starting at our start node only continuing our search outward if a given road is inside of our pruning ellipse. When the search returns, we have a list of all arcs that are contained solely inside of the pruning ellipse. We compute CAS feasibility of these arcs using the same contraction hierarchy shortest path algorithm used to calculate blank path segments. Our scores and costs are identical to those used in our VVA implementation.
 
 
 \subsubsection{Implementation Observations}
 \label{sec:ls-observations}
-Because the LS algorithm is randomized, running the same query multiple times produces different routes. \cref{fig:ls-route1} shows a perfectly circular route. However, a route with these characteristics is not always generated by the algorithm. Running the same query may produce a route such as \cref{fig:ls-route2}. The route in \cref{fig:ls-route2} contains two subpaths which extend outward and return on the same path like cul-de-sacs. In the most extreme case, shown in \cref{fig:ls-route3}, the route is solely composed of these ``backtracking" subpaths. This results from the LS algorithm because attractive arc are being glued together by shortest paths; The shortest path back after taking an attractive arc may be the same path taken to get to the arc's start.
+We ran our ILS implementations on OSM data of upstate New York to examine the generated routes. \cref{fig:vva-example} shows an example route generated by the VVA algorithm. Since this algorithm is deterministic, running the same query multiple times gives the same result. In this case, the generated route contains three quick turns in succession which can be dangerous for cyclists as they need to cross traffic lanes (\cref{fig:vva-example-turn}).
 
-This backtracking shown in \cref{fig:ls-routes} may be undesirable for cyclists. While riding on the same road more than once is not inherently undesirable for recreational cyclists, this may pose a safety issue. Following a route with excess backtracking requires numerous U-turns which can be dangerous for cyclists.  
+However, since the LS algorithm is randomized, running the same query multiple times produces different routes. \cref{fig:ls-route1} shows a circular route. However, a route with these characteristics is not always generated by the algorithm. Running the same query may produce a route such as \cref{fig:ls-route2}. The route in \cref{fig:ls-route2} contains two subpaths which extend outward and return on the same path like cul-de-sacs. In the most extreme case, shown in \cref{fig:ls-route3}, the route is solely composed of these ``backtracking" subpaths. Backtracking occurs because attractive arcs are glued together by shortest paths. The shortest path back after taking an attractive arc may be the same path taken to get to the arc's start.
+
+This backtracking shown in \cref{fig:ls-routes} may be undesirable for cyclists. While riding on the same road more than once is not inherently undesirable for recreational cyclists, this can pose a safety issue. Following a route with excess backtracking may result in U-turns which can be dangerous for cyclists. However, not all backtracking creates U-turns. 
 
 \begin{figure}
 \begin{subfigure}{.48\linewidth}
 \centering
 \includegraphics[width=\textwidth]{figs/ls-route1}
-\caption{Perfectly circular route}
+\caption{Circular route}
 \label{fig:ls-route1}
 \end{subfigure}%
 \hfill
@@ -558,15 +560,15 @@ This backtracking shown in \cref{fig:ls-routes} may be undesirable for cyclists.
 \label{fig:ls-route3}
 \end{subfigure}
 \end{center}
-\caption{Example routes generated by our LS implementation with GraphHopper.}
+\caption[LS example routes]{Example routes generated by our LS implementation with GraphHopper.}
 \label{fig:ls-routes}
 \end{figure}
 
-Our research implementing the LS algorithm in GraphHopper lead us to the following observations about the algorithm:
+Our implementation the LS algorithm in GraphHopper lead us to the following observations about the algorithm:
 \begin{enumerate}
-    \item LS does not avoid backtracking when creating blank path segments or when computing arc feasibility.
-    \item LS tries to get as close to the cost budget as possible.
-    \item LS puts very few restrictions on what is considered an attractive arc.
+    \item LS does not avoid backtracking when creating blank path segments or when computing arc feasibility.\label{obs:backtrack}
+    \item LS tries to get as close to the cost budget as possible.\label{obs:budget}
+    \item LS puts very few restrictions on what is considered an attractive arc.\label{obs:arc}
     \item LS does not penalize turns.
 \end{enumerate}
 
@@ -574,22 +576,24 @@ Our research implementing the LS algorithm in GraphHopper lead us to the followi
 We introduce a few variants of LS to address the observations explained in \cref{sec:ls-observations}.
 
 \subsubsection{Budget Allowance}
-The LS local search algorithm makes the greedy choice to insert a candidate arc at the smallest blank path segment in the route. This function continuously inserts candidate arcs until the CAS is empty or the cost budget is exhausted. This means that the path returned by \cref{alg:ils-lu-genpath} will normally be very close to the maximum cost. 
+The LS local search algorithm makes the greedy choice to insert a candidate arc at the smallest blank path segment in the route. This function continuously inserts candidate arcs until the CAS is empty or the cost budget is exhausted. This means that the path returned by LS will normally be very close to the maximum cost. 
 
-The intuition is if the initial route generated by \cref{alg:ils-lu-genpath} is very close to the budget, then there may not be enough budget remaining to make big changes to the route. Therefore, the ILS may get stuck in a local optimum. The ``budget allowance" variant aims to solve this by leaving more budget for later iterations of the search. Given a fixed percentage $0 < p < 1$, this variant ensures that Algorithm 6 is only allowed to use $p \cdot RemainingBudget$ when constructing the path at any given iteration. 
+The intuition is if the initial route generated by LS is very close to the budget, then there may not be enough budget remaining to make big changes to the route. Therefore, the ILS may get stuck in a local optimum. The ``budget allowance" variant aims to solve this by leaving more budget for later iterations of the search. Given a fixed percentage $0 < p < 1$, this variant ensures that LS is only allowed to use $p \cdot RemainingBudget$ when constructing the path at any given iteration. This variant addresses observation \ref{obs:budget}.
 
 \subsubsection{Incremental Budget}
-The ``incremental budget" variant is similar to the ``budget allowance" variant and aims to solve the same problem. However, instead of using a fixed budget percentage, it has a minimum budget percentage $p_{min}$. Over the course of the ILS iterations, the allowed budget scales from $p_{min}$ to $1$ in increments of $(1 - p_{min}) / iterations$. The intuition is that while we want to save budget for later iterations, we shouldn't heavily restrict the budget as we near the termination of the ILS.
+The ``incremental budget" variant is similar to the ``budget allowance" variant and aims to solve the same problem. However, instead of using a fixed budget percentage, it has a minimum budget percentage $p_{min}$. Over the course of the ILS iterations, the allowed budget scales from $p_{min}$ to $1$ in increments of $(1 - p_{min}) / iterations$. The intuition is that while we want to save budget for later iterations, we shouldn't heavily restrict the budget as we near the termination of the ILS. This variant addresses observation \ref{obs:budget}.
+
 
 \subsubsection{Arc Restrictions}
-This variant changes how arcs are chosen to be included in a CAS. In the baseline LS implementation, attractive arcs are arcs whose score is greater than zero. This variant takes in two parameters $minRoadLength$ and $minRoadScore$. An arc is only considered attractive and added to the CAS if its distance in meters is greater than $minRoadLength$ and its score is greater than $minRoadScore$. The intuition behind these restrictions is that the algorithm should not route to an attractive arc that is very small and have a meager score. Similarly, for a particular arc, the distance spent to traverse it should be worthwhile and this is generally true of longer arcs with higher scores. 
+This variant changes how arcs are chosen to be included in a CAS to address observation \ref{obs:arc}. In the baseline LS implementation, attractive arcs are arcs whose score is greater than zero. This variant takes in two parameters $minRoadLength$ and $minRoadScore$. An arc is only considered attractive and added to the CAS if its distance in meters is greater than $minRoadLength$ and its score is greater than $minRoadScore$. The intuition behind these restrictions is that the algorithm should not route to an attractive arc that is very short and has a meager score. Similarly, for a particular arc, the distance spent to traverse it should be worthwhile and this is generally true of longer arcs with higher scores.
+
 
 \subsubsection{No Backtracking}
-This variant attempts to solve the issue displayed in \cref{fig:ls-routes} by ``blacklisting" roads from the shortest path computations. As the algorithm builds up intermediate solutions, we keep track of all the arcs currently in the solution using a HashSet. When it is time to calculate a blank path segment to an attractive arc, we restrict which arcs are allowed to be traversed by the shortest path algorithm using the HashSet and the attractive arc. When calculating the blank path segment away from the attractive arc, we need to blacklist not only the roads in the solution but the roads in the first blank path segment as well. This practice has two key implementation details which we address.
+This variant attempts to address observation \ref{obs:backtrack} shown in \cref{fig:ls-routes} by ``blacklisting" roads from the shortest path computations. As the algorithm builds up intermediate solutions, we keep track of all the arcs currently in the solution using a HashSet. We stop the shortest path algorithm from using any blacklisted roads during its search. When calculating the blank path segment away from the attractive arc, we need to blacklist not only the roads in the solution but the roads in the first blank path segment as well. This approach has two key implementation details which we address.
 
-First, blacklisting roads may break the shortest path computation. In a connected graph there is always some shortest path between any two nodes. However, if we restrict which roads are allowed in the search then it is possible that we may have no shortest path. For example, consider an attractive arc at the end of a dead end road. Computing the first blank path segment to the arc will succeed but we cannot take the same path back so we have no return segment. In the case where we have no available blank path segment, we set the total path cost to \emph{infinity}. This means that the arc will no longer be included in the CAS since it cannot feasibly update any arcs. 
+First, blacklisting roads may break the shortest path computation. In a connected graph there is always some shortest path between any two nodes. However, if we restrict which roads are allowed in the search then it is possible that we may have no shortest path. For example, consider an attractive arc at the end of a dead end road. Computing the first blank path segment to the arc will succeed but we cannot take the same path back so we have no return segment. In the case where we have no available blank path segment, we set the total path cost to infinity. This means that the arc will no longer be included in the CAS since it cannot feasibly update any arcs. 
 
-Second, this blacklisting process does not work well with contraction hierarchies. Recall that a contraction-hierarchy shortest-path algorithm traverses over contracted ``shortcut" edges in the graph. The actual returned shortest path is recreated by finding the original roads which these shortcuts skip over. When determining if a road is blacklisted in our shortest path traversal, we need to check whether our current road is a shortcut and if it is, make sure none of the roads it skips are also blacklisted. This is quite challenging since a shortcut may skip multiple roads and may skip other shortcut edges. This means that we need to recursively ``unpack" a shortcut (and any skipped shortcuts)  before we can determine if we should avoid the arc. This is effectively undoing all the pre-computation that is done when the contraction hierarchy is initialized. In order to avoid this problem, our no-backtracking variant does not use a contraction hierarchy shortest-path algorithm.
+Second, this blacklisting process does not work well with contraction hierarchies. Recall that a contraction-hierarchy shortest-path algorithm traverses over contracted ``shortcut" edges in the graph. The actual returned shortest path is recreated by finding the original roads which these shortcuts skip over. When determining if a road is blacklisted in our shortest path traversal, we need to check whether our current road is a shortcut and if it is, make sure none of the roads it skips are also blacklisted. This is quite challenging since a shortcut may skip multiple roads and may skip other shortcut edges. This means that we need to recursively ``unpack" a shortcut (and any skipped shortcuts)  before we can determine if we should avoid the arc. This is effectively undoing all the pre-computation that is done when the contraction hierarchy is initialized. In order to avoid this problem, our no-backtracking variant does not use a contraction hierarchy shortest-path algorithm and instead uses bidirectional Dijkstra's algorithm which is slower.
 
 
 \section{Data}
@@ -647,7 +651,7 @@ First, we present images of example routes generated by our LS variants (\cref{f
 \caption{Example route generated by LS + (No Backtracking)}
 \label{fig:ls-no-backtracking}
 \end{subfigure}\\[1ex]
-\caption{Example routes generated by our LS variants implemented with GraphHopper.}
+\caption[LS variant example routes]{Example routes generated by our LS variants implemented with GraphHopper.}
 \label{fig:ls-route-variants}
 \end{figure}
 
@@ -685,7 +689,7 @@ First, we present images of example routes generated by our LS variants (\cref{f
 % INDIVIDUAL GRAPHS
 \begin{figure}
 \input{individual_graphs.tikz}
-\caption{Algorithm performance with unit scoring.}
+\caption[Individual algorithm performance graphs]{Algorithm performance with unit scoring.}
 \label{fig:graphs-unit-scoring}
 \end{figure}
 
@@ -693,7 +697,7 @@ First, we present images of example routes generated by our LS variants (\cref{f
 % COMBINED GRAPH
 \begin{figure}
 \input{combined_graph.tikz}
-\caption{Performance of all algorithms using unit-scoring.}
+\caption[Combined algorithm performance graph]{Performance of all algorithms using unit-scoring.}
 \label{fig:graphs-combined-unit-scoring}
 \end{figure}
 
