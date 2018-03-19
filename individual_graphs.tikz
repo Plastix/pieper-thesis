@@ -166,7 +166,7 @@
 \end{axis}
 \end{tikzpicture}
 \end{center}
-\caption{LS + (Incremental Budget)}
+\caption{LS + (Incremental Budget) \label{fig:graph-inc}}
 \end{subfigure}
 \\[1ex]
 \begin{subfigure}{.45\linewidth}
