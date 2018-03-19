@@ -824,7 +824,7 @@ This appendix discusses the details of the LS algorithm not covered in \cref{sec
 %
 \begin{algorithm}
     \caption{generatePath($s$, $d$, $dist$, $minProfit$, $A$) \label{alg:ils-lu-genpath}}
-    \KwData{$s$: a start node of the path, $d$: the end node of the path, $dist$: the path's budget, $minProfit$: minimum score of the path, $A$: candidate arc set to choose arcs from.}
+    \KwData{$s$: a start node of the path,\\$d$: the end node of the path,\\$dist$: the path's budget,\\$minProfit$: minimum score of the path,\\$A$: candidate arc set to choose arcs from.}
     \KwResult{a path which fits the specified criteria.} 
     
     $a_f \gets (s, d, 0, 0)$ \tcp*[h]{Arc with endpoints s \& d with cost \& score of 0}\label{alg:ils-lu-genpath-fake}\;
@@ -869,7 +869,7 @@ While the time limit $t$ has not elapsed, the algorithm chooses arcs from the so
 %
 \begin{algorithm}
     \caption{ILS-LS($t$, $s$, $d$, $dist$, $G$) \label{alg:ils-lu}}
-    \KwData{$t$: a time, $s$: the start node of the path, $d$: the end node of the path, $dist$: the maximum cost of the route, $G$: the graph of the road network.}
+    \KwData{$t$: a time,\\$s$: the start node of the path,\\$d$: the end node of the path,\\$dist$: the maximum cost of the route,\\$G$: the graph of the road network.}
     \KwResult{a path}
     
     \If{$(s \spa d).cost > dist$}{\label{alg:ils-lu-spcheck}
@@ -912,7 +912,7 @@ These heuristic scoring metrics are used by the LS algorithm to guide the pertur
 %
 \begin{algorithm}[!h]
     \caption{QualityRatio($a.pre$, $a.post$, $a_c$) \label{alg:ils-lu-qr}}
-    \KwData{$a_c$: arc from candidate arc set, $a.pre$: previous arc in solution, $a.post$: next arc in solution.}
+    \KwData{$a_c$: arc from candidate arc set,\\$a.pre$: previous arc in solution,\\$a.post$: next arc in solution.}
     \KwResult{a number.}
     $score \gets (a.pre \spa a_c \spa a.post).score$\;
     $cost \gets (a.pre \spa a_c \spa a.post).cost$\;
