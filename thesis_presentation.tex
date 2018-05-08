@@ -50,10 +50,10 @@
 \DeclarePairedDelimiter\ceil{\lceil}{\rceil}
 \newcommand{\td}{\todo[inline]}
 
-\title[Bike Route Algorithms]{Heuristic Algorithms for Bike Route Generation}
+\title[Bike Route Algorithms]{Iterated Local Search Algorithms for Bike Route Generation}
 \author{Aidan Pieper\\\footnotesize{Matthew Anderson (Advisor)}}
 \institute{Computer Science Department, Union College}
-\date{March 3, 2018}
+\date{May 11, 2018}
 %\logo{\includegraphics[height=1cm]{figs/cs_logo}}
 
 
@@ -289,7 +289,7 @@ Previous literature models this problem as an instance of the\\\textbf{Arc Orien
     We implemented two ILS algorithms using:
     \begin{itemize}
         \item \textbf{GraphHopper}: An open source routing library.
-        \item \textbf{OpenStreetMaps}: An open mapping dataset.
+        \item \textbf{OpenStreetMap}: An open mapping dataset.
     \end{itemize}
     
 
@@ -666,24 +666,56 @@ Limitations:
     
     \begin{center}
     \begin{figure}
-    \begin{tabular}{|l|l|l|}
+    \begin{tabular}{|p{15em}|l|l|l|l|}
     \hline
-    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} \\
+    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} & \textbf{Ratio} \\
     \hline
-    DFS & 20.57 & 20.37 \\
+    DFS & 20.57 & 20.37 & 1.00 \\
     \hline
-    Geometric & 126.13 & 1.20 \\
+    Geometric & 126.13 & 1.20 & 105.10 \\
     \hline
-    Geometric + (Budget allowance) & 215.87 & 23.12 \\
+    Geometric + (Budget allowance) & 215.87 & 23.12 & 9.33 \\
     \hline
-    Geometric + (Incremental budget) & 282.66 & 119.52 \\
+    Geometric + (Incremental budget) & 282.66 & 119.52 & 2.36 \\
     \hline
-    Geometric + (Arc restrictions) & 49.85 & 0.09 \\
+    Geometric + (Arc restrictions) & 49.85 & 0.09 & 553.88 \\
     \hline
-    Geometric + (No backtracking) & 33.36 & 0.60 \\
+    Geometric + (No backtracking) & 33.36 & 0.60 & 55.6 \\
+    \hline
+    Geometric + (Budget allowance) + (Arc restrictions) & 32.49 & 2.37 & 13.70 \\
     \hline
     \end{tabular}
     \caption{Algorithm performance of variants.}
+    \end{figure}
+    \end{center}
+\end{frame}
+
+\begin{frame}{Conclusions}
+\begin{itemize}
+    \item Using a smarter ILS cutoff strategy can save substantial time.
+\end{itemize}
+    \begin{center}
+    \begin{figure}
+    \begin{tabular}{|p{15em}|l|l|l|}
+    \hline
+    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} & \textbf{Ratio} \\
+    \hline
+    DFS & 19.28 & 1.01 & 19.08 \\
+    \hline
+    Geometric & 113.93 & 0.67 & 170.0 \\
+    \hline
+    Geometric + (Budget allowance) & 192.95 & 10.39 & 18.57 \\
+    \hline
+    Geometric + (Incremental budget) & 1.14 & 1.29 & 0.88 \\
+    \hline
+    Geometric + (Arc restrictions) & 49.92 & 0.06 & 832 \\
+    \hline
+    Geometric + (No backtracking) & 33.37 & 0.61 & 54.70 \\
+    \hline
+    Geometric + (Budget allowance) + (Arc restrictions) & 30.80 & 0.88 & 35 \\
+    \hline
+    \end{tabular}
+    \caption{Algorithm performance of variants with score-cutoff.}
     \end{figure}
     \end{center}
 \end{frame}
