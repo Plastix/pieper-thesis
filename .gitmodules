@@ -1,0 +1,6 @@
+[submodule "osm-bike-routing"]
+	path = osm-bike-routing
+	url = git@github.com:Plastix/osm-bike-routing.git
+[submodule "osm-integer-programming"]
+	path = osm-integer-programming
+	url = git@github.com:Plastix/osm-integer-programming.git
