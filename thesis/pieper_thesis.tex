@@ -1,0 +1,959 @@
+\documentclass[honors]{union-cs-thesis}
+
+\usepackage{fullpage}
+\usepackage{url}
+\usepackage{todonotes}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[utf8]{inputenc}
+\usepackage{soul}
+\usepackage{multicol}
+\usepackage[numbers]{natbib}
+\usepackage[ruled, vlined, linesnumbered]{algorithm2e}
+\usepackage{placeins}
+\usepackage{caption}
+\usepackage[position=top]{subcaption}
+\usepackage{listings}
+\usepackage{pgfplots}
+\usepackage[toc,page]{appendix}
+\usepackage{hyperref}
+\usepackage[capitalise, noabbrev]{cleveref} % Must be loaded after hyperref
+
+\pgfplotsset{compat=1.3}
+\usetikzlibrary{pgfplots.external}
+%\tikzexternalize[prefix=tikz/]
+
+% Theorem and Math macros borrowed from 
+% CS Professor Matt Anderson
+% ------- Theorem and related environments --------
+\newtheorem{theorem}{Theorem}
+\newtheorem{conjecture}{Conjecture}
+\newtheorem{proposition}{Proposition}
+\newtheorem{claim}{Claim}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{definition}{Definition} 
+\newtheorem{problem}{Problem}
+\newtheorem{observation}{Observation}
+\newtheorem{fact}{Fact}
+
+\newcommand{\NN}{\mathcal{N}} % Natural Numbers
+\newcommand{\RR}{\mathcal{R}} % Real Numbers
+\newcommand{\ZZ}{\mathcal{Z}} % Integers
+\newcommand{\QQ}{\mathcal{Q}} % Rational Numbers
+
+\newcommand{\set}[1]{\ensuremath{\{{#1}\}}} % Set
+\newcommand{\bigset}[1]{\ensuremath{\left\{{#1}\right\}}}
+\newcommand{\condset}[2]{\ensuremath{\set{{#1}\;|\;{#2}}}} % Conditional set
+\newcommand{\nin}{\not\in}
+\newcommand{\cross}{\times} % Cartesian product
+\newcommand{\ssn}{\subsetneq} % Proper subset
+\newcommand{\sse}{\subseteq} % Subset
+
+\DontPrintSemicolon
+\newcommand{\spa}{\rightsquigarrow}
+\newcommand{\td}{\todo[inline]}
+
+\begin{document}
+% Set code listing settings
+\lstset{
+    language=Java,
+    basicstyle={\scriptsize, \linespread{0.8}},
+    frame=single,
+    numbers=left,
+    showstringspaces=false,
+    stringstyle=\ttfamily,
+    breaklines=true,
+    caption=\texttt{\lstname}
+} 
+
+
+\pagenumbering{roman} % Roman numeral page numbers in table of contents
+
+\title{Iterated Local Search Algorithms for Bike Route Generation}
+\author{Aidan R. Pieper}
+\date{\today}
+
+% The three commands below are only used when the honors option is
+% passed to \documentclass.  
+\authorLF{Pieper, Aidan R.}
+\dept{Department of Computer Science}
+\advisor{Matthew Anderson}
+
+\maketitle
+
+\begin{abstract}
+\makeabstract
+
+Planning routes for recreational cyclists is challenging because they prefer longer more scenic routes, not the shortest one. This problem can be modeled as an instance of the Arc Orienteering Problem (AOP), a known NP-Hard optimization problem. Because no known algorithms exist to solve this optimization problem efficiently, we solve the AOP using  heuristic algorithms which trade accuracy for speed. We implement and evaluate two different Iterated Local Search (ILS) heuristic algorithms using an open source routing engine called GraphHopper and the OpenStreetMap data set. We propose ILS variants which our experimental results show can produce better routes at the cost of time. 
+
+\end{abstract}
+
+\tableofcontents
+\listoffigures % empty if using condensed formatting
+\listoftables % empty if using condensed formatting
+\lstlistoflistings
+\makepreamble
+
+\pagenumbering{arabic}
+
+\section{Introduction}
+Cycling is a popular and diverse activity enjoyed by millions of people all over the world. To some, cycling is a means of commuting to work while to others it is a recreational sport.  The quality of cycling infrastructure varies across the globe. In countries like Belgium and the Netherlands where cycling is a popular recreational sport, there are vast networks of bicycle-friendly secondary roads \cite{souffriau2011planning}. However, many places do not have this same level of cycling infrastructure so bike riders must share highways with other road vehicles.
+
+Route planning for recreational cyclists poses a fundamentally different problem than traditional route planning problems because the shortest route is not necessarily the 	preferable cycling route. Recreational cyclists generally prefer longer, more scenic, and less trafficked routes as the goal of the activity is recreation not transportation. When planning routes, recreational cyclists consider different factors such as route distance, elevation gain, maximum percent gradient, and how pleasant a road is to travel by bike. Designing a route that fits all user-specified criteria is a difficult task.  Moreover, there are no set criteria which determine a ``preferable" cycling route. The desirability of a given route is based on the rider's personal preferences, goals, and fitness. This research explores different algorithms for generating cycling routes for recreational road cyclists.
+
+
+Most bike rides begin and end in the same location. Using this assumption, this research focuses specifically on generating preferable \emph{circular} cycling routes. For example, a cyclist may want a 15-mile route which starts and ends at their home.
+    
+
+\subsection{Motivations}
+Traditional route planning problems focus mainly on finding a path in a graph optimizing for either shortest distance or time. There exists many route planning tools such as \href{https://www.strava.com/routes/new}{\url{strava.com}}, \href{https://www.mapmyride.com}{\url{mapmyride.com}}, and \href{https://ridewithgps.com}{\url{ridewithgps.com}} which allow users to add points on a map and generate a route between such destinations. However, none of these tools can fully generate a route without additional user input.
+
+%\td{Add info about traveling cyclists}
+
+
+\subsection{Related work} \label{sec:relatedwork}
+In the literature, planning preferable cycling routes is modeled as an instance of the Arc Orienteering Problem (AOP), a variant of the Orienteering Problem (OP) \cite{souffriau2011planning}. First introduced in 1987 by \citeauthor{golden1987orienteering}, the classical OP is a combination of node selection and determining shortest paths between nodes in a graph \cite{golden1987orienteering}. The OP is a hybrid between two classical combinatorial problems, the Knapsack Problem and the Traveling Salesman Problem\footnote{The OP may sometimes be referred to as the \emph{Selective} Traveling Salesman Problem \cite{laporte1990selective}.}. In the classical OP, each node in the graph is assigned a non-negative score and a non-negative cost. Given a starting node, a destination node, and some maximum cost budget, the objective is to determine a non-repeating path which starts at the starting node, visits some subset of the graph nodes, and ends at the destination node \cite{gunawan2016orienteering}. In addition, the solution path must both maximize the total collected score, accrued from visiting a node, and keep the total collected cost under the specified budget.
+
+The AOP is the arc variant of the OP where each arc, i.e., graph edge, is given a score and a cost. In the AOP, scores and costs are accrued from visiting an arc instead of a node. For example, \cref{fig:aop-example} shows an undirected AOP instance where $S$ is the start node, $D$ is the destination node, the budget is 10, and every edge is labeled (score, cost). The shortest path is $S \rightarrow (10,3) \rightarrow (5,5) \rightarrow D$ which has a cost of 8 and a score of 15. However, for the specified budget, $S \rightarrow (20,1) \rightarrow (3,2) \rightarrow (2,2) \rightarrow (5,5) \rightarrow D$ is the optimal solution with a score of 30 and a cost of 10. The optimal solution is clearly not the shortest path but rather the path with the maximal score constrained by the cost budget.
+
+Previous research shows that both the OP and the AOP are NP-Hard problems for directed and undirected graphs \cite{gunawan2016orienteering}. No algorithms are known to \emph{optimally} solve the AOP or OP in polynomial time. While there is considerable research into the OP and its variants, there is less research into the AOP. \citeauthor{gunawan2016orienteering} provide an exhaustive survey of the OP and its variants, but the AOP is clearly over shadowed by other OP variants in the literature \cite{gunawan2016orienteering}.
+
+\begin{figure}
+\begin{center}
+    \begin{tikzpicture}[auto,x=1.25cm, y=1.25cm,line width=0.5mm]
+    
+        \begin{scope}[every node/.style={circle,thick,draw}]
+        \node(1) at (0,0) {$S$};
+        \node(2) at (2, -0.5) {};
+        \node(3) at (4, -2) {$D$};
+        \node(4) at (2, -4) {};
+        \node(5) at (-0.5, -2.5) {};
+        \node(6) at (-3, -2) {};
+        \end{scope}
+        
+        \draw (1) -- node[xshift=-0.5cm] {(10,3)} (2);
+        \draw[line width=1mm]  (2) -- node {(5,5)} (3);
+        \draw (3) -- node {(5, 12)} (4);
+        \draw (2) -- node {(15, 5)} (4);
+        \draw[line width=1mm] (2) -- node[yshift=-0.25cm, xshift=-0.5cm] {(2,2)}(5);
+        \draw (4) -- node {(8, 9)}(5);
+        \draw[line width=1mm] (5) -- node {(3, 2)} (6);
+        \draw[line width=1mm] (6) -- node[] {(20, 1)} (1);
+        \draw (1) -- node [xshift=-1.5cm]{(2, 1)} (5);
+    
+    \end{tikzpicture}
+\end{center}
+\caption[Undirected AOP instance]{Undirected AOP instance with start node $S$ and destination $D$. Arc label is (score, cost). Bold path is optimal for a budget of 10 (score = 30, cost = 10).\label{fig:aop-example}}
+\end{figure}
+
+ 
+\citeauthor{gavalas2015approximation} \cite{gavalas2015approximation} show approximation algorithms for the AOP in both directed and undirected graphs. Approximation algorithms are algorithms to NP-Hard optimization problems that do not produce optimal answers yet have provable accuracy bounds. A polylogarithmic approximation algorithm is shown for directed graphs while a $(6 + \epsilon + o(1))$-approximation algorithm is shown for undirected graphs \cite{gavalas2015approximation}. Moreover, they show a reduction from the AOP to the OP. Using an existing OP approximation algorithm by \citeauthor{nagarajan2011directed} \cite{nagarajan2011directed}, this reduction yields a $O(\frac{(\log m)^2}{\log \log m})$-approximation algorithm for solving the AOP in directed graphs where $m$ is the number of edges.
+
+\citeauthor{souffriau2011planning} \cite{souffriau2011planning} study the AOP in the context of cycle trip planning. \citeauthor{souffriau2011planning} provide an integer programming mathematical model for the AOP and a greedy randomized adaptive search heuristic algorithm for solving AOP instances to near optimality in a few seconds. To evaluate performance of their algorithm, the authors test their algorithm against a road network of bike-friendly roads in East Flanders. The East Flanders' bicycle road network covers 5 regions and is comprised of 989 nodes with 2963 arcs for a total of 3585 km of road. This model for the AOP requires that each node and edge is visited at most once by the solution path.
+
+\citeauthor{verbeeck2014extension} \cite{verbeeck2014extension} consider the cycle trip planning problem in a directed graph. The authors propose two heuristic algorithms for solving the AOP: A branch-and-cut algorithm and an iterated local search algorithm. See \cref{sec:ils} for a detailed explanation of iterated local search. Unlike, \citeauthor{souffriau2011planning}, this model allows the route to visit the same vertex multiple times but visiting the same arc twice is not allowed. A two-way road can be travelled exactly once in each direction since it is modeled by two separate edges in the directed graph.  Both algorithms were evaluated by running them on the East Flanders road network dataset provided by \citeauthor{souffriau2011planning}
+
+Similarly, research by \citeauthor{bergman2015optimization} \cite{bergman2015optimization} defines the ``Circular Cycle Tour Problem" as a cycle trip planning problem where the start and end location are the same. Like other cycle routing problems, they model it as an instance of the AOP. \citeauthor{bergman2015optimization} use a popularity weighted road network graph using road popularity data from smartphone fitness tracking application \href{http://www.sports-tracker.com/}{\url{sports-tracker.com}}. The authors use a tabu search heuristic algorithm for solving their AOP instance.
+
+
+\subsection{Research Question}
+As mentioned in \cref{sec:relatedwork}, existing literature models cycle trip planning as an instance of the AOP. This research follows the existing literature and focuses on implementing and improving existing AOP algorithms for cycle route planning. 
+
+Since road networks can be quite large and because the AOP is NP-Hard, searching for the optimal route may take an infeasible amount of time. Since we care more about finding a good route than finding the best possible route, we trade off optimality for speed. However, even AOP approximation algorithms are too slow for applications where a response time on the order of milliseconds is required, e.g., 300 ms \cite{lu2015arc}. Therefore, we focus on heuristic algorithms for route generation. Both \citeauthor{verbeeck2014extension} and \citeauthor{lu2015arc} propose heuristic algorithms which follow the Iterated Local Search (ILS) framework. ILS is a heuristic method for solving many optimization problems. ILS builds a sequence of locally optimal solutions through repeated applications of a heuristic search algorithm. Our research question is as follows:
+
+\begin{quote}
+    \emph{To what extent can ILS algorithms be improved to generate better bike routes?}
+\end{quote}
+
+\subsection{Our Contribution}
+In the following sections we refer to the the algorithm proposed by \citeauthor{verbeeck2014extension} as the \emph{VVA Algorithm} and the algorithm proposed by \citeauthor{lu2015arc} as the \emph{LS Algorithm}. We implement the VVA and LS algorithms using an open source routing engine named GraphHopper. We make initial observations by running these algorithms on a subset of the New York State road network using public mapping data from the OpenStreetMap foundation. These observations lead us to create four variants of the LS algorithm. We then ran experiments on a small road network to compare the relative performance of VVA, LS, and our variants. We also pursue an absolute algorithm evaluation by attempting solve an Integer Program model of the AOP. 
+
+Our experimental results show that the LS algorithm is faster than the VVA algorithm but not substantially. However, the LS algorithm does produce substantially higher scoring routes than VVA. Our LS variants can produce even higher scoring routes than the baseline LS algorithm but at a cost of time. We are unable to validate the claimed 300 millisecond response time of the LS algorithm. VVA and LS are solving slightly different problems since VVA restricts taking a road more than once while LS does not. This may account for the scoring differences.
+
+The remainder of this thesis explains this research in detail. \cref{sec:prelim} contains background information on ILS, VVA, and LS. Next, \cref{sec:ils-implementation} discusses our data source, the open source software we used, and our implementation of VVA and LS including our LS variants. In \cref{sec:data} we present our experimental data and performance analysis using two different ILS stopping criteria. We also discuss an Integer Programming model for the AOP. Finally, we conclude with a summary of our results and future work.
+
+\section{Preliminaries}
+\label{sec:prelim}
+
+First, we discuss how to model preferable cycling routes and then heuristics for solving the AOP. Recall that Iterated Local Search (ILS) is a heuristic method for solving many optimization problems. We explain the abstract idea of ILS and then we explain how ILS is used in both the VVA and LS algorithms. The VVA algorithm uses a simple depth-first-search with additional checking. The LS algorithms uses a greedy search with spatial techniques to reduce the search space.
+
+\subsection{Modeling Preferability of Cycling Routes} \label{routefactors}
+Recreational cyclists consider many factors when designing a preferable cycling route. The following is a non-exhaustive list of such factors:
+
+\begin{multicols}{3}
+\begin{itemize}
+    \item Route distance
+    \item Route elevation gain
+    \item Time
+    \item Maximum percent gradient
+    \item Amount of traffic
+    \item Number of intersections
+    \item Good cellular service
+    \item Easy parking at start
+    \item Availability of restrooms
+    \item Availability of rest stops
+    \item Scenery
+    \item Proximity to bike shops
+    \item Proximity to mass transit
+    \item Limited uphill at end of ride
+\end{itemize}    
+\end{multicols}
+
+Many of these factors can be modeled nearly identically. For example, distance, elevation gain, and time are all calculated by the sum of those weights over all roads in the route. On the other hand, maximum percent gradient can be seen as a ``Boolean criterion." That is, a road's steepness is either under the maximum percent gradient or over, in which case the road does not satisfy this criterion. If these Boolean criteria must be avoided, a simple option is to initially remove all roads from the graph which do not meet these criteria.
+
+In previous research, the cost of a particular arc is usually the length of the road and the score is some measure of the preferability of the road. Since the AOP requires a single value for the cost and score of each arc, computing costs and scores as linear combinations of different features is a one way to model multiple factors. For example, a particular road's cost might be a combination of its length, its elevation gain, and the level of traffic on the road. This allows one to give certain factors more importance by weighting them more heavily in the linear combination. Furthermore, one might want to avoid certain Boolean criteria instead of outlawing them entirely. For instance, one could avoid dirt roads by giving them higher costs.
+
+While multiple route factors are important to recreational cyclists, the focus of this research is not to model the preferability of roads. Hence, we assume that we have the necessary data to appropriately score roads for recreational cyclists. The focus of this research is on the route planning algorithm, not creating the graph and its associated weights which represents the AOP instance.
+
+\subsection{Iterated Local Search}
+\label{sec:ils}
+Iterated Local Search (ILS) is a framework for solving optimization problems using heuristic search algorithms. A heuristic is a technique used to solve a problem quickly when exact or approximation methods are too slow. Heuristic algorithms can be thought of as ``shortcuts" in that they trade optimality and completeness for speed. Heuristics are often used in search algorithms to  determine which branch of the search to take but are not guaranteed to produce the best solution. A heuristic algorithm is commonly referred to as a heuristic.
+
+Local Search is a heuristic method for solving optimization problems. Local Search starts with a candidate solution and moves to a higher scoring solution as defined by an objective function which scores solutions in the search space \cite{gendreau2010handbook}. Local Search can get stuck in local optima which are points in the search space that are better than all similar solutions but are not the best possible solution.
+
+ILS is a variant of Local Search that attempts to stop it from getting trapped in local optima. Instead of repeating random trials of the heuristic algorithm, ILS builds a sequence of locally optimal solutions generated by the heuristic which is more likely to lead to a better overall solution \cite{gendreau2010handbook}. This is done by first generating an initial solution using the search heuristic, perturbing the current solution, and applying the search heuristic again on the modified solution. The perturbation and local search steps are then repeated until some condition, usually time, is met. \cref{alg:ils-framework} outlines the ILS framework.
+
+%
+% Iterated Local Search definition
+%
+\begin{algorithm}
+\caption{ILS($t$, $localsearch$, $score$)\label{alg:ils-framework}}
+\KwData{$t$: a time,\\$localsearch$: a heuristic search function,\\$score$: an objective function,\\$perturb$: a function which modifies the solution.}
+\KwResult{A solution of the $localsearch$ function.}
+S $\gets$ $localsearch$(empty solution)\;
+\While{$t$ seconds have not elapsed}{
+    $S^* \gets perturb(S)$\;
+    $S' \gets localsearch(S^*)$\;
+    \If{$score(S') > score(S)$}{
+        $S \gets S'$\;
+    }
+}
+\KwRet{S}
+\end{algorithm}
+
+Despite its simplicity, ILS can be challenging to implement effectively because many implementation choices are left to the developer. For example, an effective ILS implementation requires a certain level of domain specific knowledge. The main issue with ILS is that the algorithm may still get ``trapped" in a local maximum over many iterations. Therefore, the modification step must modify the solution enough to make progress but not too much that the search is effectively starting with a different ``random" solution upon each iteration. 
+
+% TODO(Aidan) draw picture of ils peaks and troughs
+
+
+\subsection{VVA Algorithm}
+%\td{The graph $G$ is never passed in anywhere in the pseudocode??}
+\citeauthor{verbeeck2014extension} propose an ILS algorithm which uses a modified version of depth-first search (\cref{alg:dfs}) as its local search heuristic. It is implemented as a recursive function that finds a path between two disconnected nodes in the bike route. The algorithm is allowed to ``take" a road and add it to the current route as long as it has not been traversed before and the shortest path from the end of the traversed arc to the destination is less than the remaining distance budget after taking the arc (\cref{alg:dfs:feasability}). In other words, it must be \emph{feasible} to get from the end of the chosen arc to the desired destination after traversing the arc (\cref{fig:arc-feasablity}).
+
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}[auto,x=1.25cm, y=1.25cm,line width=0.5mm]
+    \begin{scope}[every node/.style={circle,thick,draw}]
+        \node(1) at (0,0) {$S$};
+        \node(2) at (6, 0) {$D$};
+        \node[label=below:$v_1$](3) at (2,0) {};
+        \node[label=below:$v_2$](4) at (4,0) {};
+        \end{scope}
+        \draw (1) .. controls (1, 0.5) and (1, -0.5) .. (3);
+        \draw[->, line width=1mm] (3) -- node{$a$}(4);
+        \draw[dotted] (4) .. controls (5, -0.5) and (5, 0.5) .. (2);
+        \node[below] at (3,-1) {$(S \rightarrow v_1).cost + a.cost + ShortestPath(v_2, D) \leq Budget$};
+    \end{tikzpicture}
+\end{center}
+\caption[Arc feasibility checking]{Arc feasibility checking}
+\label{fig:arc-feasablity}
+\end{figure}
+
+
+Since this requires many shortest path computations, the VVA algorithm assumes that all-pairs shortest path have been pre-computed before the ILS runs. In Algorithm \cref{alg:dfs}, the function $shortestPath(v_1, v_2)$ would return the pre-computed shortest path. In addition, the $maxDepth$ parameter is used to restrict the depth of the search and reduce the search space (\cref{alg:dfs:depth}).
+
+\begin{algorithm}
+    \caption{DFS($route$, $s$, $d$, $dist$, $minProfit$, $maxDepth$)\label{alg:dfs}}
+    \KwData{$route$: a temporary solution,\\$s$: the start node of the path,\\$d$: the end node of the path,\\$dist$: the maximum cost of the route,\\$minProfit$: the minimum score of the route,\\$maxDepth$: the maximum number of edges allowed in the solution,\\$shortestPath(v_1, v_2)$: a function which returns the shortest distance between two nodes of the graph,\\$edges(v_1)$: a function which returns all edges of a node. 
+        }
+    \KwResult{A boolean which denotes whether a path was found. If true, the solution is contained inside of $route$.}
+    \If{$maxDepth < 0$}{\label{alg:dfs:depth}
+        \KwRet{false}\;
+    }
+    \For{$arc \in edges(s)$}{ \label{alg:dfs:for}
+        \If{$arc \nin route$ and $arc.cost + shortestPath(arc.end, d) < dist$}{\label{alg:dfs:feasability}
+            Add $arc$ to $route$\;
+            \uIf{$arc.end = d$ and $route.score > minProfit$}{\label{alg:dfs:end}
+                \KwRet{true}\;
+            } \ElseIf{DFS(route, arc.end, d, dist - arc.cost, minProfit, maxDepth - 1)}{\label{alg:dfs:recurse}
+                \KwRet{true}\;
+            }
+            Remove $arc$ from $route$\;
+        }\label{alg:dfs:endfor}
+    }
+\KwRet{false}\;
+\end{algorithm} 
+
+Using this DFS algorithm as the local search heuristic \citeauthor{verbeeck2014extension}, apply the ILS framework to create a bike route planning algorithm. \cref{alg:ils-ver} first generates an initial route using the DFS heuristic and stores the path in the variable $route$ (\cref{alg:ilsv:init}). The ILS perturbs the solution by removing a road from the solution and invoking the DFS procedure to find a new local solution (\crefrange{alg:ilsv:perturb}{alg:ilsv:improve}). In the perturbation phase, the algorithm removes $R$ consecutive arcs starting at the arc at position $A$ in the running solution $route$. If a new path is found after removing a path segment from the solution, then the new path is merged into the current solution (\cref{alg:ilsv:merge}). If no new path with score improvement can be found $A$ and $R$ are both incremented by 1 (\cref{alg:ilsv:increment}). This perturbs the solution more and more in an attempt to move the search out of a local optima.
+
+%
+% VVA ILS Algorithm
+%
+\begin{algorithm}
+    \caption{ILS-VVA($s$, $d$, $dist$, $maxDepth$, $t$) \label{alg:ils-ver}}
+    \KwData{$s$: the start node of the path,\\$d$: the end node of the path,\\$dist$: the maximum distance of the path,\\$maxDepth$: the maximum depth allowed in the DFS,\\$t$: a time.}
+    \KwResult{a path.}
+    
+    $route \gets$ empty route\;
+    \If{not DFS(route, s, d, dist, 0, maxDepth)}{\label{alg:ilsv:init}
+        $route \gets$ empty route\;
+    }
+    $A \gets 1$, $R \gets 1$\;
+    
+    \While{$t$ seconds have not elapsed}{
+        $temp \gets$ copy of $route$\;
+        \If{$R > temp.length$}{
+            $R \gets 1$\;
+        }
+        
+        \If{$A + R > temp.length -1$}{
+            $R \gets temp.length - 1 - A$\;
+        }
+        
+    
+        Remove $R$ arcs from $temp$ starting at arc at index $A$\; \label{alg:ilsv:perturb}
+        $minScore \gets$ sum of scores of removed arcs from $temp$\;
+        $s^* \gets$ starting node of first arc removed\;
+        $d^* \gets$ ending node of last arc removed\;
+        $new \gets$ empty route\;
+        
+        \If{DFS(new, $s^*$, $d^*$, dist - temp.dist, minScore, maxDepth)}{\label{alg:ilsv:improve}
+            Merge $new$ into $temp$ at index $A$\; \label{alg:ilsv:merge}
+            $route \gets temp$\;
+            $A \gets 1$, $R \gets 1$\;
+        } \Else {
+            $A \gets A + 1$, $R \gets R + 1$\; \label{alg:ilsv:increment}
+        }
+    
+    }
+    
+    \KwRet{route}        
+\end{algorithm}
+
+The main drawback of the VVA algorithm is that the ILS has slow iterations because it is performing DFS on every iteration.  Moreover, it requires many shortest paths to be precomputed before the algorithm can run. This can be infeasible on large real-world  mapping datasets. Since the algorithm assumes all pairs shortest-path is pre-computed, the feasibility checking used by the search is $O(degree^{maxDepth})$ where $degree$ is the max degree of nodes in the road network and $maxDepth$ is the maximum depth allowed in the DFS. However, since the DFS returns when it finds any better path not just the best one, this worst case performance is not typically expected.
+
+\subsection{LS Algorithm}
+\label{sec:ls-algo}
+The ILS algorithm proposed by \citeauthor{lu2015arc} aims to solve many of the problems of VVA including slow iteration and large pre-computation. Instead of relying on pre-computed shortest paths, the LS algorithm uses online shortest path computations and does less feasibility checking by reducing the search space with spatial pruning techniques (See \cref{sec:pruning}). In addition, LS uses a greedy path generation algorithm instead of DFS.
+
+\subsubsection{Attractive Arcs}
+LS models a solution route in terms of ``attractive arcs" which are arcs with a positive score. A path from node $v_1$ to $v_2$ is a series of attractive arcs which starts with $a_1$, ends with $a_n$ and is denoted by, $(v_1 \spa a_1 \spa a_2 \spa \ldots \spa a_n \spa v_2)$. The symbol $\spa$ denotes the shortest path in the graph between two nodes or arcs. The path between two adjacent attractive arcs ($a_i \spa  a_{i+1}$) is known as a ``blank path segment" and is the shortest path from the end vertex of $a_i$ to the start vertex of $a_{i+1}$. These vertices are respectively denoted $l_i.start$ and $l_i.end$ where $l_i$ is the shortest path. Given an attractive arc $a_i$ from a solution path, $a_i.pre$ refers to the previous attractive arc ($a_{i-1}$) and $a_i.post$ refers to the next attractive arc in the path ($a_{i+1}$). 
+
+To build a solution, the LS algorithm connects many attractive arcs together using shortest path blank path segments. The total cost of a path is the sum of all costs of all the arcs in the path, including the arcs in the blank path segments. The score of a path is the sum of all attractive arcs \emph{excluding} any attractive arcs which may be in blank path segments.
+
+\subsubsection{Candidate Arc Set}
+Every arc $a$ in the solution route $S$ is associated with a set of candidate attractive arcs that it could be replaced with. Arcs are taken out of these sets in order to generate a path between two vertices.
+%
+% Definition of Candidate Arc Set
+%
+\begin{definition}[\cite{lu2015arc}]
+    Let $a \in S$ be an arc in the solution route $S$. Let $B$ be the distance budget. Then the Candidate Arc Set (CAS) of $a$, denoted by $a.CAS$ is the set of arcs who have a positive score and can feasibly replace $a$ in $S$, i.e. $\forall a_c \in a.CAS, a_c.score > 0$ and $(a.pre \spa a_c \spa a.post).cost < B - S.cost + (a.pre \spa a \spa a.post)$.
+\end{definition}
+
+\citeauthor{lu2015arc} show that candidate arc sets have the following inherited closure property. This allows the search space to be reduced when computing some CASs since the parent CAS can be restricted.
+\begin{lemma}[\cite{lu2015arc}] Let $a$ be an arc. $\forall a_c \in a.CAS, a_c.CAS \sse a.CAS$.
+\end{lemma}
+
+To choose which candidate arcs to add to the solution, \citeauthor{lu2015arc} propose a criterion called ``Quality Ratio" which is defined for an arc from a candidate arc set. The intuition is that arcs with higher value and lower cost will be more likely to improve the solution. In order to determine which arcs to remove from the solution in the ILS perturbation, they propose a criteria called ``Improve Potential". The intuition is that solution arcs with lower scores and more valuable nearby arcs are more likely to improve the solution. See \cref{sec:ls-appendix-heuristics} for more information.
+
+\cref{alg:ils-lu-compcas} performs the feasibility checking to generate a set of candidate arcs which can be used to connect a start node $v_1$ to a destination node $v_2$. The algorithm takes in a set of possible arcs, iterates over each one, and adds the arc to the current CAS only if its score is positive and the distance of the path from $v_1$ to $a$ to $v_2$ is within the specified budget (\crefrange{alg:ils-lu-compcas-for}{alg:ils-lu-compcas-add}). In addition, the Quality Ratio is calculated for the specified arc in the CAS (\cref{alg:ils-lu-compcas-qr}). If the CAS, $A$, passed into the algorithm is non-empty, then it can use the ``CAS inherit" property and filter out arcs whose paths are within the new specified budget. If the CAS passed in is non-empty, then the algorithm will iterate over all arcs in the graph to find the ones which can be feasibly inserted (\crefrange{alg:ils-lu-compcas-if}{alg:ils-lu-compcas-ifend}).
+
+
+%
+% Compute Candidate Arc Set algorithm
+%
+\begin{algorithm}
+    \caption{computeCAS($G$, $A$, $v_1$, $v_2$, $dist$) \label{alg:ils-lu-compcas}}
+    \KwData{$G$: the road network graph,\\$A$: a candidate arc set,\\$v_1$: start node,\\$v_2$: destination node,\\$dist$: allowable budget.}
+    \KwResult{A set of candidate arcs.} 
+    $CAS \gets \text{empty set}$\;
+    \If{$A$ is empty}{ \label{alg:ils-lu-compcas-if}
+    $A \gets$ all arcs from $G$\; \label{alg:ils-lu-compcas-ifend}
+    }
+    \For{$a \in A$}{\label{alg:ils-lu-compcas-for}
+        \If(\tcp*[h]{Feasibility checking}){$a.score > 0$ and $(v_1 \spa a \spa v_2).cost \leq dist)$}{
+            $a.qr = QualityRatio(v_1, v_2, a)$\; \label{alg:ils-lu-compcas-qr}
+            add $a$ to CAS\; \label{alg:ils-lu-compcas-add}
+        }
+    }
+    \KwRet{CAS}
+\end{algorithm}
+
+
+%
+% Update Candidate Arc Set algorithm
+%
+\begin{algorithm}
+    \caption{updateCAS($A$, $a$, $v_1$, $v_2$, $newDist$, $oldDist$) \label{alg:ils-lu-updatecas}}
+    \KwData{$A$: set of all arcs in the graph,\\$a$: arc whose CAS needs to be updated,\\$v_1$: node in current path before $a$,\\$v_2:$ node in current path after $a$}
+    \KwResult{An updated set of candidate arcs}
+    $CAS \gets a.CAS$\;
+    \If(\tcp*[h]{Restrict CAS using inherit property}){$newDist < oldDist$}{\label{alg:ils-lu-updatecas-less}
+        \For{$e \in a.CAS$}{
+            \If{$(v_1 \spa e \spa v_2).cost > newDist$}{
+                remove $e$ from $CAS$\; \label{alg:ils-lu-updatecas-lessend}
+            }
+        }
+    } \ElseIf(\tcp*[h]{Expand CAS by checking all edges from graph}) {$newDist > oldDist$}{ \label{alg:ils-lu-updatecas-more}
+        \For{$e \in A$}{
+            \If{$e \nin CAS$ and $e.score > 0$ and $(v_1 \spa e \spa v_2).cost \leq newDist$}{
+                add $e$ to $CAS$\; \label{alg:ils-lu-updatecas-moreend}
+            }
+        }
+    }
+    \KwRet{CAS}
+\end{algorithm}
+
+If arcs are added to the current solution, then the route's distance changes as well as the remaining budget. For the new arcs added, computing the respective CASs using \cref{alg:ils-lu-compcas} suffices. However, the previous arcs in the solution need to have their CASs changed since the remaining distance budget is now different. \cref{alg:ils-lu-updatecas} takes in two budget values, $newDist$ and $oldDist$. If the new budget is smaller than the old budget, there may be some arcs in our CAS whose paths are too long for the new budget. Therefore, the algorithm employs CAS inheritance and restricts the current CAS by removing the arcs which can no longer be feasibly inserted with the new budget (\crefrange{alg:ils-lu-updatecas-less}{alg:ils-lu-updatecas-lessend}). If the new budget is larger than our old budget, then the algorithm expands the CAS by checking the feasibility of all arcs in the graph (\crefrange{alg:ils-lu-updatecas-more}{alg:ils-lu-updatecas-moreend}).
+
+%\td{Move the CAS to the appendix??}
+
+
+\subsubsection{ILS Formulation}
+The local search method used by LS is a greedy algorithm. It continuously inserts feasible arcs from a CAS at the closest blank path segment until the budget is exhausted or there are no more CAS arcs. The LS ILS algorithm removes a random arc from the solution using the heuristic scoring metric ``Improve Potential" and uses the greedy local search to fill the gap in the path. If a new path is found, it is inserted into the route and the CAS of each arc is computed or updated accordingly. See \cref{sec:ls-appendix-path} for details on this path generation algorithm and how it is used in the ILS. 
+
+
+\subsubsection{Spatial Pruning Techniques}\label{sec:pruning}
+While LS relies on the ``CAS inherit" property to restrict the search space, it still has to do a lot of processing to generate the initial CAS or update CASs when the budget expands. To address this issue,  \citeauthor{lu2015arc} propose an ``ellipse pruning" technique to reduce the number of arcs which need to be checked.
+
+
+An ellipse is a curve such that for every point on the curve, the sum of the distances to the two focal points is constant. Consider the scenario where there are two graph nodes $v_1$ and $v_2$ in which the desired path between the two has a budget of $b$. Furthermore, consider the ellipse whose focal points are the two nodes and whose sum of the distances to the two focal points is $b$ (\cref{fig:ellipse}). For all points $p$ on the ellipse $(v_1 \spa p \spa v_2).cost = b$ where the shortest path is the straight line Euclidean distance. Therefore, if there is an arc $a$ which connects $v_1$ to $v_2$ and contains a point $p_o$ outside of the ellipse, we know that $a.cost > b$ since $(v_1 \spa p_o \spa v_2).cost > b$. This criteria is used to prune arcs from the search space when calculating or updating CASs.
+
+\begin{figure}
+\begin{center}
+\begin{tikzpicture}[auto, x=1.5cm, y=0.75cm]
+  \begin{scope}[every node/.style={circle,thick,draw}]
+\node[label=left:$v_1$](1) at (0,0) {};
+\node[label=right:$v_2$](2) at (3,0) {};
+\node(4) at (1, 2.5) {};
+\node(5) at (2, 3) {};
+\end{scope}
+
+\draw[dashed, line width=0.5mm] (1) -- (4);
+\draw[dashed, line width=0.5mm] (2) -- (5);
+\draw[->, line width=1mm] (4) -- node{$a$}(5);
+
+\draw[line width=0.5mm] (1.5, 0) ellipse (4.5 cm and 1.5cm) node [below=15pt] {$Ellipse(v_1, v_2, b)$};
+\end{tikzpicture}
+\end{center}
+\caption[Ellipse pruning technique]{Illustration of \citeauthor{lu2015arc}'s ellipse pruning technique. The goal is to connect $v_1$ to $v_2$ with a path of budget $b$. The arc $a$ is excluded from the search since it contains a point outside of the ellipse and is therefore infeasible. \cite{lu2015arc}.}
+\label{fig:ellipse}
+\end{figure}
+
+
+
+\section{ILS Implementation}
+\label{sec:ils-implementation}
+We implement the VVA and LS algorithms and evaluate them on real world road networks. This section discusses the technical details of our implementation. We first discuss our data source, the open source software used, and road scoring metrics. Then we explain the choices made in both our VVA and LS implementations. Finally this section concludes with observations of our implementations and we propose four new LS variants based on these observations. 
+
+\subsection{OpenStreetMap}
+We use the crowd-sourced open mapping dataset provided by the \emph{OpenStreetMap} (OSM) foundation\footnote{OSM provides a free mapping dataset for the entire planet. A full world map is around 56GB.}\cite{osm}. However, the OSM map format is an XML-based schema which is not trivially translatable into a road network graph. Luckily, in addition to open data, OSM includes a collection of open source software which interface with the data. Because the goal of this research is not to translate raw OSM data into a usable graph representation, we used software that already has this parsing capability in order to implement both ILS algorithms. Because OSM is a crowdsourced dataset, its level of accuracy varies across the world which is the main drawback to using this data. 
+
+\subsubsection{Map Metadata}
+Some OSM roads (known as ``ways" in OSM parlance) contain metadata used to help bicycle routing but it is not guaranteed to be available. This bicycle routing hint is a value which is used to express the desirability of a road (\cref{tab:osm-hint}).  
+\begin{table}
+\begin{center}
+    \begin{tabular}{|l|p{0.75\linewidth}|}
+        \hline
+        \textbf{Metadata Value} & \textbf{Meaning} \\
+        \hline
+        -3 & ``Avoid at all cost" \\
+        \hline
+        -2 & ``Only use to reach your destination, not well suited" \\
+        \hline
+        -1 & ``Better take another way" \\
+        \hline
+        0 & ``As well as other ways around." \\
+        \hline
+        1 & ``Prefer" \\
+        \hline
+        2 & ``Very nice way to cycle" \\
+        \hline
+        3 & ``This way is so nice, it pays out to make a detour also if this means taking many unsuitable ways to get here." \\
+        \hline
+    \end{tabular}
+\end{center}
+\caption[Bicycle routing hints]{OSM bicycle routing hints. Taken directly from the OSM wiki \cite{osm}.}
+\label{tab:osm-hint}
+\end{table}
+However, the OSM wiki notes that these values ``should not be used where other attributes\footnote{Example attributes include number of lanes, maximum speed, and incline.} are considered adequate description" \cite{osm}.
+
+\subsection{GraphHopper}
+\label{sec:graphhopper}
+We use GraphHopper as the starting point for our research. GraphHopper is an open source routing engine written in Java which can download and parse raw OSM data into a usable graph representation \cite{graphhopper}. On top of data parsing, GraphHopper provides a web server and webpage front-end which are useful for visualizing and running routing algorithms (\cref{tab:graphhopper-frontend}). Internally, GraphHopper has a number of built-in pathfinding algorithms including A* and Dijkstra which can be used for routing. These algorithm implementations provide a good template for implementing other routing algorithms with GraphHopper. 
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=\textwidth]{figs/graphhopper}
+    \end{center}
+    \caption[GraphHopper web frontend]{GraphHopper web frontend. This is OpenStreetMap data overlaid with the shortest path from Union College to Saratoga Springs.}
+    \label{tab:graphhopper-frontend}
+\end{figure}
+
+Additionally, GraphHopper supports multiple ``routing profiles" which modify the weights of roads based on a particular vehicle. This is used to give preference to certain roads that are more suited for a particular vehicle. GraphHopper's default bike routing profile contains code for giving the normalized ``priority" value of a road. A normalized priority value is one of the 7 values contained in \cref{tab:osm-hint} normalized to a 0 to 1 scale with 1 being more preferable. When determining the priority of a road, this routing profile also considers other road metadata such as road speed and road surface. GraphHopper will use the other metadata if bicycle specific routing hints are not available. We use this normalized priority value calculated by GraphHopper as our road scoring mechanism. A road's cost is simply its distance in meters.
+
+
+\subsubsection{Contraction Hierarchies}
+GraphHopper supports a special type of graph preprocessing called contraction hierarchies \cite{graphhopper}. The goal of contraction hierarchies is to preprocess the graph such that subsequent shortest path queries can be computed more quickly but still provably correct. This is done by ordering nodes by some importance value and then iteratively ``contracting" the least important node. Contracting a node $v$ means replacing shortest paths through $v$ with new shortcut edges \cite{geisberger2008contraction}. A faster shortest path search can be obtained by running a bidirectional shortest-path search making sure that the forward direction only traverses edges going to more important nodes and the backward direction only traverses edges coming from more important nodes.
+
+When running the GraphHopper server for the first time, the engine processes the raw OSM data into a graph and builds contraction hierarchies for each of the enabled routing profiles. This contraction step may take many minutes depending on the size of the graph. We use GraphHopper's built-in contraction hierarchy based shortest path algorithm\footnote{GraphHopper's default algorithm is bidirectional Dijkstra's algorithm.} for calculating shortest paths in both our VVA implementation and LS implementation.
+
+\subsection{VVA Implementation}
+Our Java implementation of the VVA algorithm differs very little from the pseudocode provided by \citeauthor{verbeeck2014extension} Our implementation does not have a set of starting locations nor does it retain the four best initial solutions. Rather, the starting location is fixed and only the single highest scoring solution is retained between iterations. These choices both simplify our implementation and make the ILS closer to that of the LS algorithm. Our local search heuristic is still a recursive DFS with a maximum depth parameter that performs arc feasibility checking.
+
+Another difference in our implementation is how we check arc feasibility. Instead of pre-computing all-pairs shortest path, we use GraphHopper's built in contraction hierarchies and do an online shortest-path computation. This is slower than assuming all shortest paths have been pre-computed. However, this requires far less computation before our algorithm starts. In addition, we can leverage GraphHopper's fast and correctly implemented shortest-path algorithms without writing our own pre-processing code. Since we are routing on a contraction hierarchy graph, we need to make sure to ignore the special ``shortcut" edges added in the contraction phase. Our road scoring mechanism is GraphHopper's normalized priority value and road costs are distances in meters.
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=\textwidth]{figs/vva-route}
+    \end{center}
+    \caption[VVA example route]{Example route produced by our implementation of the VVA algorithm.}
+    \label{fig:vva-example}
+\end{figure}
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=\textwidth]{figs/vva-route-turn}
+    \end{center}
+    \caption[VVA quick turns]{Quick turns in VVA example route. Inset in \cref{fig:vva-example}}
+    \label{fig:vva-example-turn}
+\end{figure}
+
+
+\subsection{LS Implementation}
+Compared to the the VVA algorithm, the LS algorithm is more complex and so our implementation differs more from the pseudocode provided by \citeauthor{lu2015arc}. There are many more implementation choices to be made. Recall that this algorithm works by connecting together attractive arcs with shortest paths known as blank path segments. 
+
+Implicitly defined in the LS algorithm is an object which represents the solution built up through iterations. We call this object a ``route" and provide a unified interface for adding and removing arcs from this path. When adding and removing arcs, internally the object maintains the blank path segment invariant by calculating shortest paths and storing these paths. When it is time to return the actual path to GraphHopper, the Route object simply iterates over stored attractive arcs and shortest paths (blank path segments) in order. Since we are using a contraction hierarchy shortest path algorithm to compute the blank path segments, we recursively ``unpack" any shortcuts (to get the original roads) before returning the solution to GraphHopper. 
+
+Our Candidate Arc Set (CAS) computation also differs in the way we spatially fetch arcs. We perform a breath first search starting at our start node only continuing our search outward if a given road is inside of our pruning ellipse. When the search returns, we have a list of all arcs that are contained solely inside of the pruning ellipse. We compute CAS feasibility of these arcs using the same contraction hierarchy shortest path algorithm used to calculate blank path segments. Our scores and costs are identical to those used in our VVA implementation.
+
+
+\subsubsection{Implementation Observations}
+\label{sec:ls-observations}
+We ran our ILS implementations on OSM data of upstate New York to examine the generated routes. \cref{fig:vva-example} shows an example route generated by the VVA algorithm. Since this algorithm is deterministic, running the same query multiple times gives the same result. In this case, the generated route contains three quick turns in succession which can be dangerous for cyclists as they need to cross traffic lanes (\cref{fig:vva-example-turn}).
+
+However, since the LS algorithm is randomized, running the same query multiple times produces different routes. \cref{fig:ls-route1} shows a circular route. However, a route with these characteristics is not always generated by the algorithm. Running the same query may produce a route such as \cref{fig:ls-route2}. The route in \cref{fig:ls-route2} contains two subpaths which extend outward and return on the same path like cul-de-sacs. In the most extreme case, shown in \cref{fig:ls-route3}, the route is solely composed of these ``backtracking" subpaths. Backtracking occurs because attractive arcs are glued together by shortest paths. The shortest path back after taking an attractive arc may be the same path taken to get to the arc's start.
+
+This backtracking shown in \cref{fig:ls-routes} may be undesirable for cyclists. While riding on the same road more than once is not inherently undesirable for recreational cyclists, this can pose a safety issue. Following a route with excess backtracking may result in U-turns which can be dangerous for cyclists. However, not all backtracking creates U-turns. 
+
+\begin{figure}
+\begin{subfigure}{.48\linewidth}
+\centering
+\includegraphics[width=\textwidth]{figs/ls-route1}
+\caption{Circular route}
+\label{fig:ls-route1}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.48\linewidth}
+\centering
+\includegraphics[width=\textwidth]{figs/ls-route2}
+\caption{Route with some backtracking}
+\label{fig:ls-route2}
+\end{subfigure}\\[1ex]
+\begin{center}
+\begin{subfigure}{0.48\linewidth}
+\includegraphics[width=\textwidth]{figs/ls-route3}
+\caption{Route with excess backtracking}
+\label{fig:ls-route3}
+\end{subfigure}
+\end{center}
+\caption[LS example routes]{Example routes generated by our LS implementation with GraphHopper.}
+\label{fig:ls-routes}
+\end{figure}
+
+Our implementation the LS algorithm in GraphHopper lead us to the following observations about the algorithm:
+\begin{enumerate}
+    \item LS does not avoid backtracking when creating blank path segments or when computing arc feasibility.\label{obs:backtrack}
+    \item LS tries to get as close to the cost budget as possible.\label{obs:budget}
+    \item LS puts very few restrictions on what is considered an attractive arc.\label{obs:arc}
+    \item LS does not penalize turns.
+\end{enumerate}
+
+\subsection{Our LS Variants}
+We introduce a few variants of LS to address the observations explained in \cref{sec:ls-observations}.
+
+\subsubsection{Budget Allowance}
+The LS local search algorithm makes the greedy choice to insert a candidate arc at the smallest blank path segment in the route. This function continuously inserts candidate arcs until the CAS is empty or the cost budget is exhausted. This means that the path returned by LS will normally be very close to the maximum cost. 
+
+The intuition is if the initial route generated by LS is very close to the budget, then there may not be enough budget remaining to make big changes to the route. Therefore, the ILS may get stuck in a local optimum. The ``budget allowance" variant aims to solve this by leaving more budget for later iterations of the search. Given a fixed percentage $0 < p < 1$, this variant ensures that LS is only allowed to use $p \cdot RemainingBudget$ when constructing the path at any given iteration. This variant addresses observation \ref{obs:budget}.
+
+\subsubsection{Incremental Budget}
+The ``incremental budget" variant is similar to the ``budget allowance" variant and aims to solve the same problem. However, instead of using a fixed budget percentage, it has a minimum budget percentage $p_{min}$. Over the course of the ILS iterations, the allowed budget scales from $p_{min}$ to $1$ in increments of $(1 - p_{min}) / iterations$. The intuition is that while we want to save budget for later iterations, we shouldn't heavily restrict the budget as we near the termination of the ILS. This variant addresses observation \ref{obs:budget}.
+
+
+\subsubsection{Arc Restrictions}
+This variant changes how arcs are chosen to be included in a CAS to address observation \ref{obs:arc}. In the baseline LS implementation, attractive arcs are arcs whose score is greater than zero. This variant takes in two parameters $minRoadLength$ and $minRoadScore$. An arc is only considered attractive and added to the CAS if its distance in meters is greater than $minRoadLength$ and its score is greater than $minRoadScore$. The intuition behind these restrictions is that the algorithm should not route to an attractive arc that is very short and has a meager score. Similarly, for a particular arc, the distance spent to traverse it should be worthwhile and this is generally true of longer arcs with higher scores.
+
+
+\subsubsection{No Backtracking}
+This variant attempts to address observation \ref{obs:backtrack} shown in \cref{fig:ls-routes} by ``blacklisting" roads from the shortest path computations. As the algorithm builds up intermediate solutions, we keep track of all the arcs currently in the solution using a HashSet. We stop the shortest path algorithm from using any blacklisted roads during its search. When calculating the blank path segment away from the attractive arc, we need to blacklist not only the roads in the solution but the roads in the first blank path segment as well. This approach has two key implementation details which we address.
+
+First, blacklisting roads may break the shortest path computation. In a connected graph there is always some shortest path between any two nodes. However, if we restrict which roads are allowed in the search then it is possible that we may have no shortest path. For example, consider an attractive arc at the end of a dead end road. Computing the first blank path segment to the arc will succeed but we cannot take the same path back so we have no return segment. In the case where we have no available blank path segment, we set the total path cost to infinity. This means that the arc will no longer be included in the CAS since it cannot feasibly update any arcs. 
+
+Second, this blacklisting process does not work well with contraction hierarchies. Recall that a contraction-hierarchy shortest-path algorithm traverses over contracted ``shortcut" edges in the graph. The actual returned shortest path is recreated by finding the original roads which these shortcuts skip over. When determining if a road is blacklisted in our shortest path traversal, we need to check whether our current road is a shortcut and if it is, make sure none of the roads it skips are also blacklisted. This is quite challenging since a shortcut may skip multiple roads and may skip other shortcut edges. This means that we need to recursively ``unpack" a shortcut (and any skipped shortcuts)  before we can determine if we should avoid the arc. This is effectively undoing all the pre-computation that is done when the contraction hierarchy is initialized. In order to avoid this problem, our no-backtracking variant does not use a contraction hierarchy shortest-path algorithm and instead uses bidirectional Dijkstra's algorithm which is slower.
+
+
+\section{Data}
+\label{sec:data}
+We ran a series of experiments to evaluate the performance of the VVA algorithm, the LS algorithm, and our LS variants. This section discusses our data set and data collection process.
+
+\subsection{Map Data}
+Our mapping data set is a OpenStreetMap file\footnote{In Protocolbuffer Binary Format (.pbf). PBF is an alternative to the XML format which provides better compression.} corresponding to 350 square kilometers centered around Galway, NY. We chose this dataset because it is relatively small and is moderately road dense. The size of the road network was also chosen to make an Integer Programming evaluation feasible. See \cref{sec:int-programming} for more information on this approach. The free online tool \emph{BBBike Extract} \cite{bbbike} was used to obtain the data. When parsed by GraphHopper, the internal graph representation contains 2425 directed arcs and 982 nodes.
+\subsection{Data Collection}
+We ran 500 trials of each algorithm configuration (\cref{tab:algo-configs}) fixing the start location, the cost budget, and the number of ILS iterations. To achieve circular routes, the start and end location was fixed at GPS position $(43.009327, -74.009166)$, the center of our OSM data set. The cost budget was fixed at 40 kilometers. The number of iterations was fixed at 100. Our experiments use unit scoring. Thus, if two roads of different length have the same priority value by GraphHopper then they have the same score which is its priority value directly. These choices are mostly arbitrary. The iteration number and cost budget were chosen to be similar to the experimental tests run by \citeauthor{verbeeck2014extension} and \citeauthor{lu2015arc}.
+
+The ILS algorithms were modified to record the current solution score and elapsed time at each iteration. These values were written to a single CSV file for each algorithm configuration. For each configuration, average scores and average times were calculated using pivot tables with Python and Pandas\footnote{A Python package for data manipulation and analysis.}. The experimental runs were performed on a computer with 4 Intel Xeon E5620 processors and 16GB of RAM running Ubuntu 16.04.03 LTS Desktop.
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Algorithm} & \textbf{Extra Parameters} \\
+\hline
+VVA & $maxDepth=20$ \\
+\hline
+LS & N/A \\
+\hline
+LS + (Budget Allowance) & $p_{min}=0.5$ \\
+\hline
+LS + (Incremental Budget) & $p_{min}=0.5$ \\
+\hline
+LS + (Arc Restrictions) & $minRoadLength=1km$, $minRoadScore=0.5$  \\
+\hline
+LS + (No Backtracking) & N/A \\
+\hline
+LS + (Budget Allowance) + (Arc Restrictions) & $minRoadLength=1km$, $minRoadScore=0.5$, $p_{min}=0.5$   \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Experimental algorithm configurations}
+\label{tab:algo-configs}
+\end{table}
+
+\section{Experimental Results}
+First, we present images of example routes generated by our LS variants (\cref{fig:ls-route-variants}). In \cref{sec:iteration-cutoff} we present our performance data using the iteration number as the cutoff. Lastly, in \cref{sec:score-cutoff} we analyze a more efficient ILS stopping criterion.  
+
+\begin{figure}
+\begin{subfigure}{.48\linewidth}
+\centering
+\includegraphics[width=\textwidth]{figs/ls-route-mins}
+\caption{Example route generated by LS + (Arc Restrictions)}
+\label{fig:ls-arc-restrictions}
+\end{subfigure}%
+\hfill
+\begin{subfigure}{.48\linewidth}
+\centering
+\includegraphics[width=\textwidth]{figs/ls-route-no-backtracking}
+\caption{Example route generated by LS + (No Backtracking)}
+\label{fig:ls-no-backtracking}
+\end{subfigure}\\[1ex]
+\caption[LS variant example routes]{Example routes generated by our LS variants implemented with GraphHopper.}
+\label{fig:ls-route-variants}
+\end{figure}
+
+\subsection{Iteration Cutoff}
+\label{sec:iteration-cutoff}
+\cref{tab:unit-scoring-results} shows the average times and scores of each algorithm configuration after 100 iterations. Independent plots of score and time versus iteration number are shown in \cref{fig:graphs-unit-scoring-ls}. A combined plot of variant score versus log of time is shown in \cref{fig:graphs-combined-unit-scoring}.
+
+\label{sec:unit-scoring}
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r|r|r|}
+    \hline
+    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} & \textbf{Score/Time Ratio} \\
+    \hline
+    VVA & 20.57 & 20.37 & 1.00 \\
+    \hline
+    LS & 126.13 & 1.20 & 105.10 \\
+    \hline
+    LS + (Budget Allowance) & 215.87 & 23.12 & 9.33 \\
+    \hline
+    LS + (Incremental Budget) & 282.66 & 119.52 & 2.36 \\
+    \hline
+    LS + (Arc Restrictions) & 49.85 & 0.09 & 553.88 \\
+    \hline
+    LS + (No Backtracking) & 33.36 & 0.60 & 55.6 \\
+    \hline
+    LS + (Budget Allowance) + (Arc Restrictions) & 32.49 & 2.37 & 13.70  \\
+    \hline
+\end{tabular}
+\caption{Algorithm performance after 100 iterations with unit scoring.}
+\label{tab:unit-scoring-results}
+\end{center}
+\end{table}
+
+% INDIVIDUAL GRAPHS
+\begin{figure}
+\input{individual_graphs.tikz}
+\caption[Individual algorithm performance graphs]{Algorithm performance with unit scoring.}
+\label{fig:graphs-unit-scoring}
+\end{figure}
+
+
+% COMBINED GRAPH
+\begin{figure}
+\input{combined_graph.tikz}
+\caption[Combined algorithm performance graph]{Performance of all algorithms using unit-scoring.}
+\label{fig:graphs-combined-unit-scoring}
+\end{figure}
+
+Our results validate the performance of the baseline LS algorithm compared to the VVA algorithm. VVA has a number of substantial limitations. First, VVA has small score improvement at each iteration because it completes a number of idle iterations with no improvement (\cref{fig:graphs-unit-scoring-vva}). The ``wavy" time plot is a consequence of the ILS perturbation phase. Recall that if no route improvement is found, VVA increases the number of contiguous arcs that it removes. This means that on these iterations, the DFS search must find a longer path which takes more time. VVA has small score improvement because it simply runs DFS and checks to see if the solution after inserting an arc has improved score and is still within the cost budget. It does not consider the value or cost of the path segment being removed. Secondly, VVA has slow iteration because it has a large DFS search space. Even with a maximum depth search parameter, substantial feasibility checking is required, especially for road dense areas. At the end of 100 iterations, our VVA implementation produces a route in 20 seconds (\cref{tab:unit-scoring-results}). Third, VVA requires all-pairs shortest path to be precomputed which can be infeasible for large graphs. This is not an issue with our implementation since we are using contraction hierarchies which requires less pre-computation. 
+
+Our LS baseline implementation produces a route with 6 times the score of VVA in less than 1.5 seconds (\cref{tab:unit-scoring-results}). In addition, it performs very few idle iterations (\cref{fig:graphs-unit-scoring-ls}). This shows that the spatial pruning techniques and heuristics for modifying the solution work well together to both improve overall score and reduce the time required. LS finds an initial solution which is better than VVA's final route and slowly improves over the subsequent iterations.
+
+The data shows that our intuition behind the budget allowance variant was correct. Saving cost budget for later iterations generates a route with 70\% score improvement when compared to the baseline algorithm. However, this variant pays a big penalty in time because the route generation time is nearly 20 times longer. The incremental budget variant produces an even higher score than budget allowance, but the time required to produce such a route is 100 times that of the LS baseline. Since the remaining budget is not decreasing sharply after the first iteration, these variants have to spend time computing and updating larger CASs.
+
+The two final LS variants, arc restrictions and no backtracking, have the same fault. They run much faster than the baseline but this is because after the first iteration they do no work. Both variants pose strict limitations on which arcs are allowed in the CAS. After the first iteration, the initial CAS gets pruned to the empty set so no route changes can be made. Both of these variants beat VVA's score at a minuscule fraction of the required time. However, neither comes close to LS baseline's score. Combining budget allowance and arc restrictions variants does not lead to a variant with high score that runs fast. While its score is above the VVA algorithm, it is even lower than the no backtracking variant.
+
+If we consider score to time ratio, then the arc restrictions variant wins out among all the algorithms. This ratio can be interpreted as the efficiency of the algorithm given its time usage. The arc restrictions variant has a score to time ratio of over 500, 5 times better than the baseline LS. While the variant's final score is not as good as the baseline, it can produce a route roughly half as good in a small fraction of the time.
+
+
+\subsection{Score Cutoff}
+\label{sec:score-cutoff}
+The ILS trials in \cref{sec:unit-scoring} are naive because they use a fixed iteration number as the algorithm stopping criterion. Many of these algorithms spend later iterations idle with no score improvement. Instead of using a fixed stopping criterion, we can terminate the algorithm based on score improvement over time. 
+
+We use the data from \cref{sec:unit-scoring} to simulate the stopping point of the algorithms with this halting method. At each iteration, we calculate the percent change of the score from the previous iteration. If the score improvement is less than 1\% for three consecutive iterations, then the algorithm terminates.    
+
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r|r|r|}
+    \hline
+    \textbf{Algorithm} & \textbf{Score} & \textbf{Time (s)} & \textbf{Score/Time Ratio} \\
+    \hline
+    VVA & 19.28 & 1.01 & 19.08 \\
+    \hline
+    LS & 113.93 & 0.67 & 170.0 \\
+    \hline
+    LS + (Budget Allowance) & 192.95 & 10.39 & 18.57 \\
+    \hline
+    LS + (Incremental Budget) & 1.14 & 1.29 & 0.88 \\
+    \hline
+    LS + (Arc Restrictions) & 49.92 & 0.06 & 832 \\
+    \hline
+    LS + (No Backtracking) & 33.37 & 0.61 & 54.70 \\
+    \hline
+    LS + (Budget Allowance) + (Arc Restrictions) & 30.80 & 0.88 & 35  \\
+    \hline
+\end{tabular}
+\caption{Algorithm performance with unit scoring and score-cutoff.}
+\label{tab:score-cuttoff-results}
+\end{center}
+\end{table}
+
+This technique culls large periods of wasteful time. The VVA algorithm's time drops from 20 seconds to 1 second while retaining 94\% of its score (\cref{tab:score-cuttoff-results}). Similarly, the LS baseline algorithm time is nearly halved while retaining 90\% of its score. With this stopping criterion the VVA algorithm now runs runs roughly 300 milliseconds slower than the LS baseline. While there is no substantial time difference between the two, the score of the LS baseline is nearly 6 times as great. This suggests that the heuristics which LS uses to choose arcs are effective at producing a high scoring solution.
+
+The assumption in this stopping criterion is that small score improvement over successive iterations is likely to continue. Therefore, it is not effective with ILS variants which have small value improvement at the start. For example, this criterion quickly halts the LS Incremental Budget variant before it can get any meaningful score improvement. This can be seen in the small score slope at early iterations in \cref{fig:graph-inc}. The short cutoff suggests that either the our chosen cutoff is not good or that too small a budget is not productive at improving the route.
+
+With this stopping criterion, the score to time ratio improves for all but the incremental budget and no backtracking variants. This means that generally the algorithms are spending less idle time with no score improvement.  The VVA ratio improves from 1 to 19 and the arc restriction variant ratio improves from 553 to 832.
+
+
+\section{Integer Programming Evaluation}
+\label{sec:int-programming}
+In the previous section, we evaluate performance of the ILS algorithms using relative scores and times. Since these are heuristic algorithms, this approach is required because we do not know the optimal route given our data. Integer Programming (IP) is a model for finding \emph{exact} answers to optimization problems such as the AOP. Given an exact solution to our AOP instance, we can assign our heuristic algorithm an absolute accuracy measure which shows how close the heuristic is to the best possible answer.
+
+\subsection{Integer Programming Definition}
+Many optimization problems maximize or minimize an objective given limited resources and competing constraints. If the objective can be written as a linear function of variables and the constraints written as equalities or inequalities on those variables then we have a Linear Programming (LP) problem \cite{clrs}. The goal of the LP is to find some assignment to the variables that satisfies all the constraints while maximizing or minimizing the objective function. LP is used to model many problems such as planning, routing, and scheduling.
+
+IP is a special case of LP where all the variables are constrained to use integer values \cite{ibm-int-programming}. While LP can be solved efficiently, the IP variant is NP-Hard. Therefore it is challenging to efficiently find exact answers to optimization problems using IP.
+
+\subsection{Integer Programming model for the AOP}
+Like many optimization problems, the AOP can be modeled using IP. \citeauthor{verbeeck2014extension} introduce an IP model for solving the AOP \cite{verbeeck2014extension}. We modified the IP model introduced by \citeauthor{verbeeck2014extension} to only use a single starting node rather than a set and removed the minimum score constraint. This is consistent with the choices made in our ILS implementations.
+
+In the IP model, we are given a directed graph $G = (V,A)$, a start vertex $d \in V$, and a distance budget $B \in \RR$. Each arc $a \in V$ has a cost $c_a \in \RR$, a profit $p_a \in \RR$ and a complementary arc $\bar{a} \in A \cup \set{\emptyset}$. If two arcs are available in two directions between a pair of vertices then they are complementary arcs. In addition, define $\delta(S)$ as the set of outgoing arcs from $S$ to $V \setminus S$ and let $\lambda(S)$ be the set of incoming arcs to $S$ from $V \setminus S$.
+
+The decision variables variables of the IP are $x_a \in \set{0,1}$, $\forall a \in A$ and $z_v \in \ZZ^{\geq}$, $\forall v \in V$. If $x_a = 1$ then arc $a$ is chosen in the route otherwise it is 0. $z_v$ represents the number of times a vertex $v$ is visited by the route. The following is the IP model formulation:
+
+\vspace{1ex}
+\begin{minipage}{\textwidth}
+\begin{equation*}
+    \text{Maximize} \sum_{a \in A}{p_a \cdot x_a}
+\end{equation*}
+subject to:
+\begin{align}
+\sum_{a \in A}{c_a \cdot x_a} &\leq B \label{eq:ip-cost}\\
+\sum_{a \in \lambda(v)}{x_a}  -\sum_{a \in \delta(v)}{x_a} &= 0 \quad \forall v \in V\label{eq:ip-flow}\\
+\sum_{a \in \delta(v)}{x_a} &= z_v \quad\forall v \in V \label{eq:ip-vertex}\\
+\sum_{a \in \delta(S)}{x_a} &\geq \frac{\sum_{v \in S}{z_v}}{\sum_{v \in S}{|\delta(v)|}} \quad \forall S \sse V \setminus \set{d} \label{eq:ip-subtour}\\
+z_d &= 1\label{eq:ip-start}\\
+x_a + x_{\bar{a}} &\leq 1 \quad \forall a \in A: \exists\bar{a} \in A\label{eq:ip-complement}
+\end{align}
+\end{minipage}
+\vspace{2ex}
+
+The objective maximizes the total collected score while \crefrange{eq:ip-cost}{eq:ip-complement} are constraints. \cref{eq:ip-cost} ensures that the total route cost is within the specific budget $B$. \cref{eq:ip-flow,eq:ip-vertex} ensure that for vertices in the solution, the number of outgoing and incoming arcs are equal in the route and equal to the number of times a vertex is visited. These can be thought of as ``flow constraints" limiting the route to contiguous arcs. With these constraints thus far, a valid solution to the IP may produce two disconnected loops. We want a single contiguous route. \cref{eq:ip-subtour} is a sub-tour constraint ensuring that there are no disconnected components of the route. This constraint operates on all \emph{subsets} of the vertex set. \cref{eq:ip-start} ensures the the start vertex $d$ is visited exactly once and  \cref{eq:ip-complement} ensures that an arc is taken in exactly one direction. With \cref{eq:ip-complement}, the model is comparable to the no backtracking LS variant.
+ 
+\subsection{Gurobi Implementation}
+Given our road graph, we want to solve this IP model to find an exact solution to our AOP instance. We implement a Java program to model and solve these constraints using Gurobi \cite{gurobi}, a commercial optimization solver. GraphHopper was used as a Java library to read the graph data. The graph data was then used to create the variables and constraints using the Gurobi Java API. 
+
+\cref{eq:ip-subtour} was the most challenging constraint to implement since it is a constraint on all subsets of vertices. Because $V$ may be quite large and there are $2^n$ subsets of a set of size $n$, there are too many subsets to enumerate all possible constraints. Luckily, many optimization solvers have ``lazy" constraints to address this problem. Lazy constraints operate differently than normal constraints because they are not immediately evaluated. Gurobi will ignore a lazy constraint until it finds a solution which satisfies the other constraints then it checks to see if its solution violates the lazy constraint. If so, then a new constraint based on the lazy constraint is added to the IP and Gurobi continues searching. This process continues until Gurobi finds a solution which does not violate the lazy constraint.
+ 
+We implemented \cref{eq:ip-subtour} with a lazy constraint in Gurobi. This is done by giving a callback function to Gurobi which will be called whenever an feasible solution is found. The callback must determine if the lazy-constraint is violated and if so, add a new constraint to the model. This constraint is violated whenever we have a disconnected sub-tour. To check if we have a sub-tour, we find the vertices that we can reach from the start vertex using only the arcs chosen by the decision variables $x_a$ by performing a DFS. If the reachable vertices are not all the vertices in the solution, then we have a disconnected sub-tour. The non-reachable vertices form the $S \sse V$ which violates \cref{eq:ip-subtour}. This set is converted into a new constraint for the IP inside of the lazy constraint callback.
+
+For the problem instances we experimented on, we were unable to get our Gurobi program halt and produce a valid optimal answer after multiple days of computation. We believe that there is some subtle bug in our implementation rather than lacking enough computation power because our Gurobi program succeeded for small test graphs. \citeauthor{verbeeck2014extension} solve their IP model using CPLEX, another optimization solver, and their graph takes about 6 hours. Since our graph is of comparable size, we would expect Gurobi to take around that long to solve our IP assuming similar computation power.
+
+\section{Conclusion}
+This research studied algorithms for generating bike routes for recreational road cyclists. We followed existing literature and formulated the problem as an instance of the AOP, a NP-Hard optimization problem. We focused on implementing and evaluating two ILS heuristic algorithms \cite{verbeeck2014extension} \cite{lu2015arc} for the AOP using open source mapping tools. When using naive ILS stopping criteria, our experimental results validate previous work by \cite{lu2015arc} by showing that spatial techniques are effective at reducing the search space and speeding up the route generation time. When using smarter ILS stopping criteria, our results show that spatial techniques may not drastically speed up the search. However, the other heuristics proposed by \cite{lu2015arc} do lead to much higher scoring routes. Some of our proposed ILS variants lead to higher scoring routes but at the penalty of longer generation time. When comparing score to time ratio, our arc restrictions variant is substantially better than that of either baseline ILS algorithm. While our variant's route score is not the best, this ratio shows that it is very efficient at producing a good scoring route given its time usage.
+
+\subsection{Future Work}
+With more time, we hope to run additional experimental tests of the algorithm variants. In our tests, the road graph, starting location and cost budget are fixed. More tests should be run varying all three of these parameters to see if our results generalize. We hope to continue work on our Gurobi Integer Program solution to get an optimal route score as a baseline. This will allow us give absolute accuracy measurements of the algorithms as opposed to relative comparisons.  
+
+Road scoring mechanisms have much room for improvement. In our research, we used GraphHopper's built-in bike preferability value as the road score. This choice was practical as it allowed us to focus on the algorithms themselves instead of building the road graph. However, since this scoring relies on metadata from OpenStreetMaps, this scoring may be inaccurate. Further research could work on improving road scoring by using other datasets such as road popularity among cyclists. In addition, changing the scoring metrics may change how these algorithms perform.
+
+All of our experimental tests were performed on powerful desktop computers. Future research could work on implementing these ILS algorithms on a mobile phone. With some performance tuning, we think that it is possible to generate routes in real time on a phone.
+
+\subsection{Acknowledgements}
+I would like to thank David Frey of the Union College Computer Science Department for helping me set up the computing resources to run my experiments. I would like to thank Robin (``boldtrn") of the GraphHopper open source project for answering my questions online.  
+
+\FloatBarrier
+\bibliographystyle{plainnat}
+\bibliography{references} 
+
+\begin{appendices}
+
+\section{LS Algorithm}
+This appendix discusses the details of the LS algorithm not covered in \cref{sec:ls-algo}. \cref{sec:ls-appendix-path} explains the path generation algorithm and how it in the LS ILS algorithm. \cref{sec:ls-appendix-heuristics} explains the heuristic metrics used to determine which arcs should be added and removed when performing the ILS.
+\subsection{Path Generation}
+\label{sec:ls-appendix-path}
+\cref{alg:ils-lu-genpath} is the local search heuristic used by the LS algorithm (\cref{alg:ils-lu}). Its goal is to produce a path which connects the start vertex $s$ with the destination vertex $d$ whose total cost is within the budget $dist$ and total score is greater than $minProfit$. The algorithm builds the path by choosing candidate arcs from the CAS $A$.
+
+\cref{alg:ils-lu-genpath} first instantiates a fake arc starting and ending at the specified endpoints with a cost and score of 0 (\cref{alg:ils-lu-genpath-fake}). This fake arc is used to instantiate the solution to return, $route$ (\cref{alg:ils-lu-genpath-init}). It then obtains a set of arcs to insert by filtering the CAS $A$ by choosing arcs whose quality ratio is higher than the average (\cref{alg:ils-lu-genpath-arcs}). While there are still possible arcs left to insert and the path has budget left, arcs are continuously removed from the CAS and inserted into the current solution $route$ (\crefrange{alg:ils-lu-genpath-while}{alg:ils-lu-genpath-endwhile}). The algorithm inserts these candidate arcs into the path using a greedy approach. It chooses the closest blank path segment in the solution to insert the arc into the path (\crefrange{alg:ils-lu-genpath-blank}{alg:ils-lu-genpath-blankend}).
+
+
+%
+% Generate Path algorithm
+%
+\begin{algorithm}
+    \caption{generatePath($s$, $d$, $dist$, $minProfit$, $A$) \label{alg:ils-lu-genpath}}
+    \KwData{$s$: a start node of the path,\\$d$: the end node of the path,\\$dist$: the path's budget,\\$minProfit$: minimum score of the path,\\$A$: candidate arc set to choose arcs from.}
+    \KwResult{a path which fits the specified criteria.} 
+    
+    $a_f \gets (s, d, 0, 0)$ \tcp*[h]{Arc with endpoints s \& d with cost \& score of 0}\label{alg:ils-lu-genpath-fake}\;
+    $route \gets \set{a_f}$\label{alg:ils-lu-genpath-init}\;
+    
+    $arcs \gets$ all arcs from $A$ whose quality ratio is above the average \label{alg:ils-lu-genpath-arcs}\;
+    \While {$arcs$ is not empty and $route.cost < dist$}{ \label{alg:ils-lu-genpath-while}
+        $e \gets$ remove random arc from $arcs$\; 
+        $l \gets$ empty blank path segment \label{alg:ils-lu-genpath-blank}\;
+        $minDist \gets 0$\;
+        
+        \For{$l_i \in$ blank path segments of $route$}{
+            $dist \gets (l_i.start \spa e \spa l_i.end).cost$\;
+            \If{$dist < minDist$}{
+                $l \gets l_i$\;
+                $minDist \gets dist$ \label{alg:ils-lu-genpath-blankend}\;
+            
+            }
+        }
+        
+        $path \gets (l.start \spa e \spa l.end)$
+        
+        \If(\tcp*[h]{Our path can feasibly replace $l$}){$path.cost \leq dist - route.cost + l.cost$}{
+            insert $path$ into $route$ at blank path segment $l$\label{alg:ils-lu-genpath-endwhile}\;
+        }
+    }
+    
+    \If{$route.score > minProfit$}{
+        \KwRet{route}\;
+    } \Else {
+        \KwRet{empty route}\;
+    }       
+\end{algorithm}
+
+
+\cref{alg:ils-lu} uses the ILS framework and generates the final bike route. First, the algorithm checks to see if the shortest path from the start to the destination is within the budget and if so then it runs the ILS. If not, it returns an empty solution (\crefrange{alg:ils-lu-spcheck}{alg:ils-lu-spcheck2}). The ILS first initializes a fake arc with endpoints $s$ \& $d$ and a cost of $dist$ and a score of 0 (\cref{alg:ils-lu-fake}) then computes the CAS of this arc (\cref{alg:ils-lu-fakecas}). This arc is used to initialize the temporary solution (\cref{alg:ils-lu-init}).
+
+While the time limit $t$ has not elapsed, the algorithm chooses arcs from the solution to be removed based on their improve potential, removes them from the solution, then uses $generatePath$ to find a new path which closes the gap (\cref{alg:ils-lu-while}-\cref{alg:ils-lu-ilsgenpath}). If $generatePath$ can find a path to close the gap, then it needs to update the CAS of all the arcs in the solution. For the new arcs from $generatePath$ being added to the solution, the candidate arc sets must be computed (\cref{alg:ils-lu-ilscompcas}). On the other hand, arcs already in the solution must have their CASs updated (\cref{alg:ils-lu-ilsupdatecas}) since the remaining budget will have changed by adding the new path segment. 
+
+%
+% Lu-Shahabi ILS algorithm
+%
+\begin{algorithm}
+    \caption{ILS-LS($t$, $s$, $d$, $dist$, $G$) \label{alg:ils-lu}}
+    \KwData{$t$: a time,\\$s$: the start node of the path,\\$d$: the end node of the path,\\$dist$: the maximum cost of the route,\\$G$: the graph of the road network.}
+    \KwResult{a path}
+    
+    \If{$(s \spa d).cost > dist$}{\label{alg:ils-lu-spcheck}
+        \KwRet{empty route} \label{alg:ils-lu-spcheck2}
+    } \Else {
+    
+        $a_f \gets (s,d, dist, 0)$ \tcp*[h] Arc with endpoints s \& d with cost $dist$ and score 0 \label{alg:ils-lu-fake}\;
+        $a_f.CAS \gets computeCAS(G, \set{}, s, d, dist)$ \label{alg:ils-lu-fakecas}\;
+        $solution \gets \set{a_f}$ \label{alg:ils-lu-init}\;
+        
+        
+        \While{$t$ seconds have not elapsed}{\label{alg:ils-lu-while}
+            $arcs \gets$ all arcs from $solution$ whose improve potential is above the average\;
+            $e \gets$ remove a random arc from $arcs$\;
+            $b_1 \gets solution.cost + e.cost$ \tcp*[h]{Budget after removing e from solution}\;
+            $path \gets generatePath(e.pre, e.post, b_1, e.score, e.CAS)$\label{alg:ils-lu-ilsgenpath}\;
+            \If{$path$ is not empty}{
+                remove $e$ from $solution$\;
+                insert $path$ into $solution$ between $e.pre$ and $e.post$\;
+                \For{$a \in route$}{
+                    $b_2 \gets solution.cost + a.cost$ \tcp*[h]{Budget after removing a from solution}\;
+                    \If{$a \in path$ or $a = e.pre$ or $a = e.post$}{
+                        $a.CAS = computeCAS(G, a.CAS, a.pre, a.post, b_2)$\label{alg:ils-lu-ilscompcas}\;
+                    } \Else {
+                        $a.CAS = updateCAS(G, a.CAS, a.pre, a.post, b_1, b_2)$\label{alg:ils-lu-ilsupdatecas}\;
+                    }
+                }
+            }
+        }
+        \KwRet{route}\;
+    }
+\end{algorithm}
+
+\subsection{Arc Choice Heuristics}
+\label{sec:ls-appendix-heuristics}
+These heuristic scoring metrics are used by the LS algorithm to guide the perturbation and path generation phases of the ILS. Quality Ratio is defined for an arc from a CAS of a ILS solution. It is used to determine which arcs from the CAS will be chosen to add to the route to better improve its score. Improve Potential is used to determine which arcs to remove from the current solution so that new paths are more likely to improve the score of the route.
+
+%
+% Quality Ratio algorithm
+%
+\begin{algorithm}[!h]
+    \caption{QualityRatio($a.pre$, $a.post$, $a_c$) \label{alg:ils-lu-qr}}
+    \KwData{$a_c$: arc from candidate arc set,\\$a.pre$: previous arc in solution,\\$a.post$: next arc in solution.}
+    \KwResult{a number.}
+    $score \gets (a.pre \spa a_c \spa a.post).score$\;
+    $cost \gets (a.pre \spa a_c \spa a.post).cost$\;
+    \KwRet{$score / cost$}        
+\end{algorithm}
+
+%
+% Improve Potential algorithm
+%
+\begin{algorithm}[!h]
+    \caption{ImprovePotential($a$) \label{alg:ils-lu-ip}}
+    \KwData{$a$: a solution arc}
+    \KwResult{a number.}
+    $score \gets 0$\;
+    $maxDist \gets 0$\;
+    $dist \gets (a.pre \spa a \spa a.post).cost$\;
+    \For{$e \in a.CAS$}{
+        $score \gets score + (e.score - a.score)$\;
+        $maxDist \gets max(maxDist, (a.pre \spa e \spa a.post).cost)$\;
+    }
+    \KwRet{$score / (maxDist - dist)$}       
+\end{algorithm}
+
+\section{ILS Implementation Code}
+This appendix contains Java code of our GraphHopper implementation.
+
+\subsection{VVA Code}
+\lstinputlisting{code/ils/vva/Arc.java}
+\lstinputlisting{code/ils/vva/Route.java}
+\lstinputlisting{code/ils/vva/VVAIteratedLocalSearch.java}
+
+\subsection{LS Code}
+\lstinputlisting{code/ils/ls/Arc.java}
+\lstinputlisting{code/ils/ls/normal/Route.java}
+\lstinputlisting{code/ils/ls/Ellipse.java}
+\lstinputlisting{code/ils/ls/normal/ShortestPathCalculator.java}
+\lstinputlisting{code/ils/ls/normal/LSIteratedLocalSearch.java}
+    
+\end{appendices}
+
+\end{document}
